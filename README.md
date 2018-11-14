@@ -4,4 +4,4 @@ The first file AleSpherical.cs defines namespace aleprojects.spherical which def
 
 The second file AleSphericalGrid.cs defines namespace aleprojects.spherical.grid which defines static helper class SphereGridHelper for creating and handling of a sphere triangular grid and  SphereGridTile class representing a grid tile. The SphereGridTile class has methods which allow to find tiles at the specified level covering continuous objects like polygons, polylines, and circles. [Learn more](/doc/AleSphericalGrid.md)
 
-![Polygon covered by grid tiles](http://www.aleprojects.com/upload/images/tiles-polygon.jpg) ![Polyline covered by grid tiles](http://www.aleprojects.com/upload/images/tiles-polyline.jpg) ![Circle covered by grid tiles](http://www.aleprojects.com/upload/images/tiles-circle.jpg)
+![Polygon covered by grid tiles](http://www.aleprojects.com/upload/images/tiles-polygon.jpg) ![Polyline covered by grid tiles](http://www.aleprojects.com/upload/images/tiles-polyline.jpg) ![Circle covered by grid tiles](http://www.aleprojects.com/upload/images/tiles-circle0.jpg)
