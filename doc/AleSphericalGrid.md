@@ -38,7 +38,9 @@ Suppose we have some database table
     
     public class MyDataContext : DataContext
     {
-        Table<Node> Nodes;
+        public Table<Node> Nodes;
+        
+        public MyDataContext() : base("connection string goes here") { }
     }
     
     [Table(Name = "Nodes")]
@@ -66,23 +68,24 @@ Suppose we have some database table
 
 This table is indexed by the QuadKey field and has millions of rows. With the list of tiles it is possible to query database objects for the circle quickly.
 
-    var context = new MyDataContext("db connection string goes here");
-    
-    long lower = 0;
-    long upper = 0;
-    
-    // this query is translated to
-    // SELECT * FROM Nodes WHERE QuadKey >= [lower] AND QuadKey <= [upper]
-    var query = context.Nodes.Where(n => n.QuadKey >= lower && n.QuadKey <= upper);
-    
     List<Node> result = new List<Node>();
     
-    foreach (SphereGridTile tile in tiles)
+    using (MyDataContext context = new MyDataContext())
     {
-        lower = tile.QuadKey;
-        upper = tile.QuadKeyUpperValue;
+      long lower = 0;
+      long upper = 0;
+    
+      // this query is translated to
+      // SELECT * FROM Nodes WHERE QuadKey >= @lower AND QuadKey <= @upper
+      var query = context.Nodes.Where(n => n.QuadKey >= lower && n.QuadKey <= upper);
+    
+      foreach (SphereGridTile tile in tiles)
+      {
+          lower = tile.QuadKey;
+          upper = tile.QuadKeyUpperValue;
         
-        result.AddRange(query);
+          result.AddRange(query);
+      }
     }
     
     // optionally, it is possible to check precise distance
@@ -102,7 +105,7 @@ How to find a balance between desired precision and number of covering tiles for
 
     public static int LevelForCircleToTriangleRatio(double angle, double circleToTriangleRatio)
 
-This function takes an angle representing a circle radius and **circleToTriangleRatio** which value is a circle to triangle surfaces ratio. First, this function takes 1/8 of the unit sphere surface and compares it with 2π(1-cos(angle))/circleToTriangleRatio value, where 2π(1-cos(angle)) is a surface of a circle on the unit sphere. While this value is larger than triangle surface (initially 1/8 of the sphere), it continues to divide triangle by 4 and compare. Finally, it returns a level when triangles surface are less than circle surface at least **circleToTriangleRatio** times.
+This function takes an angle representing a circle radius and **circleToTriangleRatio** which value is a circle to triangle surfaces ratio. First, this function takes 1/8 of the unit sphere surface and compares it with 2π(1-cos(angle))/circleToTriangleRatio value, where 2π(1-cos(angle)) is a surface of a circle on the unit sphere. While this value is larger than triangle surface (initially 1/8 of the sphere), it continues to divide triangle surface by 4 and compare. Finally, it returns a level when triangle surface is less than circle surface at least **circleToTriangleRatio** times.
 
 Pictures below demonstrates coverage of circles with 4000m and 1000m radius and 4 and 64 **circleToTriangleRatio**.
 
@@ -122,7 +125,6 @@ With **circleToTriangleRatio** = 64 coverage is more precise, but produces more 
 Everything the same is possible for polygons and polylines.
 
     public static List<SphereGridTile> CoverPolygonByTiles(IEnumerable<ICartesian> polygon, int level, bool join)
-    
     public static List<SphereGridTile> CoverPolylineByTiles(IEnumerable<ICartesian> polyline, int level, double tolerance, bool join)
 
 There is additional parameter **tolerance** for polylines. This is an angle, equal to a distance if multiplied by a sphere radius. Polyline is 1-dimensional, "very thin" object and it can be located very close to the triangle side. Typical task is to cover a polyline by tiles and to find objects along the route. Without tolerance, objects from one side will be missed in this case.
