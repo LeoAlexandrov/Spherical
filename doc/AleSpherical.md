@@ -48,14 +48,43 @@ Examples:
 I'll not focus on such methods like DotProduct, CrossProduct, Angle, DistanceTo, etc, because their use and purpose are obvious. But some methods are worth mentioning and explaining.
 
 ### InsideTriangle extension method
-
 	public static bool InsideTriangle(this ICartesian cartesian, ICartesian vertex1, ICartesian vertex2, ICartesian vertex3)
 	public static bool InsideTriangle(this ICartesian cartesian, double x1, double y1, double z1, double x2, double y2, double z2, double x3, double y3, double z3)
 
 This method checks if the vector **cartesian** is inside the spherical triangle with the **vertex1**, **vertex2**, **vertex3** vertices. Or with the vertices given by (x1,y1,z1), (x2,y2,z2), (x3,y3,z3). The method calculates triple products of the **cartesian** with each pair of vectors. The first criterion is that all results are of one sign. If the vector is inside, an opposite vector will produce triple products of one sign too. So, the second criterion is a plane formed by the triangle vertices ends and moved to the coordinate origin. End of **cartesian** vector must be on the one side with any of the vertices relative to this plane. This method is a cornerstone of the sphere triangular grid.
 
-### SectionsIntersect method
+### PolygonInfo method
+    public static double[] PolygonInfo(IEnumerable<ICartesian> polygon)
 
+Returns an array of angles between planes formed by vertices of a polygon. Any negative angle in the returned array indicates that the polygon is not a convex.
+Example:
+
+    string line = "svx}FhefvOa_HfsDykA~zKleIv_C`_Bo`Ggr@}wFhrCglA|kBlyNalJhvIkeJquEwkAqcLbrA{bHbrDy{D";
+    var polygon = SphericalExtension.DecodeGooglePolyline<GeoCoordinate>(line);
+    var info = SphericalExtension.PolygonInfo(polygon);
+
+![Polygon vertices and angles](http://www.aleprojects.com/upload/images/polygon-info.png)
+
+For this polygon **PolygonInfo** will return the following array:
+
+![Test section](http://www.aleprojects.com/upload/images/polygon-info-values.png)
+
+Vertices from 1 to 4 make this polygon not a convex. If some value of this array is zero, this means that 3 points are on one geodesical line and the middle one can be safely removed. 
+
+### InflateConvex method
+
+This method inflates or deflates convex polygon. 
+
+    public static List<T> InflateConvex<T>(IEnumerable<ICartesian> polygon, IList<double> angles)
+
+The idea behind calculations is to rotate planes formed by vertices vectors to an angle which is a distance on a sphere divided by sphere radius. **InflateConvex** rotates normal vectors N1 = V1 x V2, N2 = V2 x V3, etc. which represent planes. Next step is to find new vertices of inflated convex. They are cross products of rotated normal vectors N1 x N2, etc.
+
+![Inflate convex polygon](http://www.aleprojects.com/upload/images/inflate-convex.jpg)
+
+**angles** parameter must contain at least 1 element. **InflateConvex** takes the next value in **angles** for the next plane and uses the last value for the rest planes if the length of **angles** is less than the number of convex vertices. 
+
+
+### SectionsIntersect method
 	public static int SectionsIntersect(ICartesian vertex1S1, ICartesian vertex2S1, ICartesian vertex1S2, ICartesian vertex2S2)
 	public static int SectionsIntersect(ICartesian vertex1S1, ICartesian vertex2S1, ICartesian vertex1S2, ICartesian vertex2S2, double tolerance)
 
@@ -71,7 +100,8 @@ This method checks if the vector **cartesian** is inside the spherical polygon u
 
 	public static double TestSection(this ICartesian cartesian, ICartesian vertex1, ICartesian vertex2)
 
-This method checks if the vector **cartesian** is between two vectors **vertex1** and **vertex2**. First, it builds a plane using **vertex1** and **vertex2**. Then it takes an angle between the vector **cartesian** and this plane and corrects it with PI/2 angle. The method returns this angle, its positive value indicates that **cartesian** is between the vectors, negative if not. The next step is to build another plane containing **cartesian** and perpendicular to the plane obtained in the first step. Finally, it checks positions of **vertex1** and **vertex2** relative to this plane. If they are on the opposite sides, the result is positive. 
+This method checks if the vector **cartesian** is between two vectors **vertex1** and **vertex2**. First, it builds a plane using **vertex1** and **vertex2**. Then it takes an angle between the vector **cartesian** and this plane and corrects it with PI/2 angle. The method returns this angle, its positive value indicates that **cartesian** is between the vectors, negative if not. The next step is to build another plane containing **cartesian** and perpendicular to the plane obtained in the first step. Finally, it checks positions of **vertex1** and **vertex2** relative to this plane. If they are on the opposite sides, the result is positive.
+
 ![Test section](http://www.aleprojects.com/upload/images/test_section.jpg)
 
 This drawing demonstrates **TestSection** method. If to call C.TestSection(V1,V2) with C,V1,V2 as they drawn, it will return positive alpha angle indicating success. Alpha\*sphere_radius is a distance from the point C to the arc on the sphere. If C is out of the arc, method will return negative value of the angle.

@@ -459,6 +459,20 @@ namespace AleProjects.Spherical
 		public const double EPSILON_GEO = 1.0e-8;
 
 
+		private struct CartesianStruct : ICartesian
+		{
+			public double X { get; set; }
+			public double Y { get; set; }
+			public double Z { get; set; }
+
+			public void SetCartesian(double x, double y, double z)
+			{
+				X = x;
+				Y = y;
+				Z = z;
+			}
+		}
+
 		// properties
 
 		public static double Precision { get; set; } = EPSILON;
@@ -555,6 +569,23 @@ namespace AleProjects.Spherical
 			return len;
 		}
 
+		public static T Add<T>(this ICartesian cartesian, ICartesian V, bool normalize) where T : ICartesian, new()
+		{
+			double x = cartesian.X + V.X;
+			double y = cartesian.Y + V.Y;
+			double z = cartesian.Z + V.Z;
+
+			if (normalize)
+			{
+				double l = Math.Sqrt(x * x + y * y + z * z);
+				x /= l;
+				y /= l;
+				z /= l;
+			}
+
+			return NewCartesianDerivative<T>(x, y, z);
+		}
+
 		/// <summary>
 		/// Extension method calculating cross product of two vectors. The second vector is represented by X,Y,Z components. 
 		/// </summary>
@@ -590,7 +621,7 @@ namespace AleProjects.Spherical
 		/// <param name="V">Second vector.</param>
 		/// <param name="normalize">When true, method returns normalized vector.</param>
 		/// <returns>Vector representing cross product.</returns>
-		public static T CrossProduct<T>(this ICartesian cartesian, ICartesian V, bool normalize) where T:ICartesian, new()
+		public static T CrossProduct<T>(this ICartesian cartesian, ICartesian V, bool normalize) where T : ICartesian, new()
 		{
 			return cartesian.CrossProduct<T>(V.X, V.Y, V.Z, normalize);
 		}
@@ -687,9 +718,12 @@ namespace AleProjects.Spherical
 		/// <returns>New vector obtained from rotation.</returns>
 		public static T Rotate<T>(this ICartesian cartesian, double angle, ICartesian axis) where T : ICartesian, new()
 		{
+			double L = axis.VectorLength();
+
+			if (Math.Abs(L) < EPSILON) throw new ArgumentException();
+
 			double cosine = Math.Cos(angle);
 			double sine = Math.Sin(angle);
-			double L = axis.VectorLength();
 
 			double x = axis.X / L;
 			double y = axis.Y / L;
@@ -896,7 +930,7 @@ namespace AleProjects.Spherical
 					break;
 				}
 
-			if (result && 
+			if (result &&
 				(tsign = Math.Sign(polygon[n].TripleProduct(polygon[n + 1], polygon[0]))) != 0) result = tsign * sign > 0;
 
 			if (result &&
@@ -906,10 +940,11 @@ namespace AleProjects.Spherical
 		}
 
 		/// <summary>
-		/// Extension method finding problem vertices which make a polygon not a convex.
+		/// Finds problem vertices which make a polygon not a convex.
 		/// </summary>
 		/// <param name="polygon">Polygon to examine.</param>
 		/// <returns>Bool array of size equal to polygon size, elements with True value correspond to problem vertices.</returns>
+		[Obsolete]
 		public static bool[] ProblemPolygonVertices(IList<ICartesian> polygon)
 		{
 			bool[] result = new bool[polygon.Count];
@@ -936,6 +971,43 @@ namespace AleProjects.Spherical
 
 			if (n > result.Length - n)
 				for (int i = 0; i < result.Length; i++) result[i] = !result[i];
+
+			return result;
+		}
+
+		/// <summary>
+		/// Returns an array of angles between planes formed by vertices of a polygon. Any negative angle in the returned array indicates that the polygon is not a convex.
+		/// </summary>
+		/// <param name="polygon">Polygon to examine.</param>
+		/// <returns>Array of double with angles between planes.</returns>
+		public static double[] PolygonInfo(IEnumerable<ICartesian> polygon)
+		{
+			double[] result = new double[polygon.Count()];
+
+			ICartesian first = polygon.First();
+			ICartesian previous = polygon.Last();
+			ICartesian current = first;
+			CartesianStruct N1, N2;
+			int i = 0;
+
+			foreach (ICartesian next in polygon.Skip(1))
+			{
+				N1 = previous.CrossProduct<CartesianStruct>(current, false);
+				N2 = current.CrossProduct<CartesianStruct>(next, false);
+				result[i++] = previous.TripleProduct(current, next) > 0.0 ? N1.Angle(N2) : -N1.Angle(N2);
+
+				previous = current;
+				current = next;
+			}
+
+			N1 = previous.CrossProduct<CartesianStruct>(current, false);
+			N2 = current.CrossProduct<CartesianStruct>(first, false);
+			result[i] = previous.TripleProduct(current, first) > 0.0 ? N1.Angle(N2) : -N1.Angle(N2);
+
+			i = result.Count(a => a < 0.0);
+
+			if (i > result.Length - i)
+				for (i = 0; i < result.Length; i++) result[i] = -result[i];
 
 			return result;
 		}
@@ -1005,6 +1077,89 @@ namespace AleProjects.Spherical
 			intersections /= 2;
 
 			return intersections % 2 != 0;
+		}
+
+		/// <summary>
+		/// Inflates a convex polygon by rotating its planes by given angles.
+		/// </summary>
+		/// <typeparam name="T">Type T must implement the ICartesian interface.</typeparam>
+		/// <param name="polygon">Polygon to inflate.</param>
+		/// <param name="angles">Angles of rotation in radians. Negative value deflates the polygon.</param>
+		/// <returns>Inflated polygon</returns>
+		public static List<T> InflateConvex<T>(IEnumerable<ICartesian> polygon, IList<double> angles) where T : ICartesian, new()
+		{
+			int n = polygon.Count();
+			int m = angles.Count;
+
+			if (n < 3 || m == 0) throw new ArgumentException();
+
+			bool clockwise = false;
+			int sign;
+			Cartesian center = null;
+			ICartesian first = polygon.First();
+			ICartesian last = polygon.Last();
+			ICartesian previous = last;
+			ICartesian current = first;
+
+			foreach (ICartesian next in polygon.Skip(1))
+			{
+				if ((sign = Math.Sign(previous.TripleProduct(current, next))) != 0)
+				{
+					clockwise = sign > 0;
+					center = previous.DivideLineInRatio<Cartesian>(next, 0.5, false);
+					break;
+				}
+
+				previous = current;
+				current = next;
+			}
+
+			if (center == null)
+			{
+				ICartesian next = first;
+
+				if ((sign = Math.Sign(previous.TripleProduct(current, next))) != 0)
+				{
+					clockwise = sign > 0;
+					center = previous.DivideLineInRatio<Cartesian>(next, 0.5, false);
+				}
+				else throw new ArgumentException();
+			}
+
+			CartesianStruct[] planes = new CartesianStruct[n];
+			CartesianStruct N, axis;
+			previous = last;
+			int i = 0;
+			int j = 0;
+
+			foreach (ICartesian next in polygon)
+			{
+				N = previous.CrossProduct<CartesianStruct>(next, false);
+				axis = N.CrossProduct<CartesianStruct>(previous.DivideLineInRatio<CartesianStruct>(next, 0.5, false), false);
+
+				if (!clockwise) axis.SetCartesian(-axis.X, -axis.Y, -axis.Z);
+
+				planes[i++] = N.Rotate<CartesianStruct>(angles[j == m ? m - 1 : j++], axis);
+				previous = next;
+			}
+
+			List<T> result = new List<T>(n);
+			T res;
+
+			for (i = 0; i < n - 1; i++)
+			{
+				res = planes[i].CrossProduct<T>(planes[i + 1], true);
+				if (!clockwise) res.SetCartesian(-res.X, -res.Y, -res.Z);
+				result.Add(res);
+			}
+
+			res = planes[n - 1].CrossProduct<T>(planes[0], true);
+			if (!clockwise) res.SetCartesian(-res.X, -res.Y, -res.Z);
+			result.Add(res);
+
+			if (result.Any(p => double.IsNaN(p.X) || double.IsNaN(p.Y) || double.IsNaN(p.Z) || p.VectorLength() < EPSILON)) result = null;
+
+			return result;
 		}
 
 		/// <summary>
@@ -1104,6 +1259,7 @@ namespace AleProjects.Spherical
 			double N2z = cartesian.X * V.Y - cartesian.Y * V.X;
 
 			double cosine = (N1x * N2x + N1y * N2y) / (Math.Sqrt(N1x * N1x + N1y * N1y) * Math.Sqrt(N2x * N2x + N2y * N2y + N2z * N2z));
+			if (Math.Abs(cosine) > 1.0) cosine = Math.Truncate(cosine);
 			double result = Math.Acos(cosine);
 
 			double ra = cartesian.Ra();
