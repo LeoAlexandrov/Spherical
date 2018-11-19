@@ -90,11 +90,7 @@ This table is indexed by the QuadKey field and has millions of rows. With the li
     
     // optionally, it is possible to check precise distance
     
-    for (int i = 0; i < result.Count; i++)
-        if (location.DistanceTo(result[i]) > angle * SphericalExtension.EARTH_MEAN_RADIUS)
-            result[i] = null;
-            
-    result.RemoveAll(n => n == null);
+    result.RemoveAll(n => n.DistanceTo(location) > angle * SphericalExtension.EARTH_MEAN_RADIUS);
     
 
 Joining tiles by the **SphereGridTile.CoverCircleByTiles** helps to reduce number of database requests. 
