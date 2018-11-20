@@ -28,12 +28,11 @@ A location on a sphere must implement the **IGeoCoordinate** interface:
 	}
 
 Purpose of **SetSpherical** is the same as of **SetCartesian**.
-aleprojects.spherical namespace exports **GeoCoordinate** class which implements both **ICartesian** and **IGeoCoordinate** interfaces.
+aleprojects.spherical namespace provides **GeoCoordinate** class that implements both **ICartesian** and **IGeoCoordinate** interfaces.
 
 # Calculations
 
-The SphericalExtension static class provides extension methods for the ICartesian and IGeoCoordinate interfaces.
-Examples:
+The SphericalExtension static class provides extension methods for the ICartesian and IGeoCoordinate interfaces. Examples:
 
 	Cartesian vectorI = new Cartesian(1.0, 0.0, 0.0, false);
 	Cartesian vectorJ = new Cartesian(0.0, 1.0, 0.0, false);
@@ -45,13 +44,13 @@ Examples:
 	GeoCoordinate location2 = new GeoCoordinate(32.392110, -86.304144);
 	double distance = location1.DistanceTo(location2);
 
-I'll not focus on such methods like DotProduct, CrossProduct, Angle, DistanceTo, etc, because their use and purpose are obvious. But some methods are worth mentioning and explaining.
+I'll not focus on such methods like DotProduct, CrossProduct, Angle, DistanceTo, etc, because their use and purpose are obvious. But some methods for typical geospatial tasks are worth mentioning and explaining.
 
 ### InsideTriangle extension method
 	public static bool InsideTriangle(this ICartesian cartesian, ICartesian vertex1, ICartesian vertex2, ICartesian vertex3)
 	public static bool InsideTriangle(this ICartesian cartesian, double x1, double y1, double z1, double x2, double y2, double z2, double x3, double y3, double z3)
 
-This method checks if the vector **cartesian** is inside the spherical triangle with the **vertex1**, **vertex2**, **vertex3** vertices. Or with the vertices given by (x1,y1,z1), (x2,y2,z2), (x3,y3,z3). The method calculates triple products of the **cartesian** with each pair of vectors. The first criterion is that all results are of one sign. If the vector is inside, an opposite vector will produce triple products of one sign too. So, the second criterion is a plane formed by the triangle vertices ends and moved to the coordinate origin. End of **cartesian** vector must be on the one side with any of the vertices relative to this plane. This method is a cornerstone of the sphere triangular grid.
+This method checks if the vector **cartesian** is inside the spherical triangle with the **vertex1**, **vertex2**, **vertex3** vertices. Or with the vertices given by (x1,y1,z1), (x2,y2,z2), (x3,y3,z3). The method calculates triple products of the **cartesian** with each pair of vectors. The first criterion is that all results are of one sign. If the vector is inside, an opposite vector will produce triple products of one sign too. So, the second criterion is a plane formed by the triangle vertices ends and moved to the coordinate origin. End of the  **cartesian** vector must be on the one side with any of the vertices relative to this plane. This method is a cornerstone of the sphere triangular grid.
 
 ### PolygonInfo method
     public static double[] PolygonInfo(IEnumerable<ICartesian> polygon)
@@ -69,38 +68,46 @@ For this polygon **PolygonInfo** will return the following array:
 
 ![Test section](http://www.aleprojects.com/upload/images/polygon-info-values.png)
 
-Vertices from 1 to 4 make this polygon not a convex. If some value of this array is zero, this means that 3 points are on one geodesical line and the middle one can be safely removed. 
+Vertices from 1 to 4 make this polygon not a convex. *This does not mean that if to remove these vertices, the polygon will become a convex*. If some value of this array is zero, this means that 3 points are on one geodesical line and the middle one can be safely removed. 
 
 ### InflateConvex method
 
-This method inflates or deflates convex polygon. 
+This method inflates or deflates a convex polygon. 
 
     public static List<T> InflateConvex<T>(IEnumerable<ICartesian> polygon, IList<double> angles)
 
-The idea behind calculations is to rotate planes formed by vertices vectors to an angle which is a distance on a sphere divided by sphere radius. **InflateConvex** rotates normal vectors N1 = V1 x V2, N2 = V2 x V3, etc. which represent planes. Next step is to find new vertices of inflated convex. They are cross products of rotated normal vectors N1 x N2, etc.
+The idea behind calculations is to rotate planes formed by vertices vectors to an angle which is a distance on a sphere divided by sphere radius. **InflateConvex** rotates normal vectors N1 = V1 x V2, N2 = V2 x V3, etc. that represent planes. Next step is to find new vertices of the inflated convex. They are cross products of the rotated normal vectors N1 x N2, etc.
 
 ![Inflate convex polygon](http://www.aleprojects.com/upload/images/inflate-convex.jpg)
 
-**angles** parameter must contain at least 1 element. **InflateConvex** takes the next value in **angles** for the next plane and uses the last value for the rest planes if the length of **angles** is less than the number of convex vertices. 
+**angles** parameter must contain at least 1 element. **InflateConvex** takes the next value in **angles** for the next plane and uses the last value for the rest planes if the length of **angles** is less than the number of the convex vertices. 
 
 
 ### SectionsIntersect method
+
 	public static int SectionsIntersect(ICartesian vertex1S1, ICartesian vertex2S1, ICartesian vertex1S2, ICartesian vertex2S2)
 	public static int SectionsIntersect(ICartesian vertex1S1, ICartesian vertex2S1, ICartesian vertex1S2, ICartesian vertex2S2, double tolerance)
 
-This method checks that two sections (geodesical arcs) on a sphere intersect. First, this method takes a plane formed by **vertex1S1** and **vertex2S1** and checks positions of **vertex1S2** and **vertex2S2** relative to the plane. Then the same with a plane by **vertex1S2** and **vertex2S2** and the positions of **vertex1S1** and **vertex2S1**. This method uses SphericalExtension.Precision property (1.0e-15) to check that some section end belongs to another section. This is important for the Ray casting algorithm used in the **InsidePolygon** method. The method returns a negative number if the sections don't intersect, positive if intersect, zero if some section end belongs to another section. Overloaded method with tolerance parameter tests if the sections are close enough to each other to consider them intersecting. Tolerance is an angle in radians at the coordinates origin, real distance on the surface is tolerance\*sphere_radius.
+This method checks that two sections (geodesical lines) on a sphere intersect. First, this method takes a plane formed by **vertex1S1** and **vertex2S1** and checks positions of **vertex1S2** and **vertex2S2** relative to the plane. Then the same with a plane by **vertex1S2** and **vertex2S2** and the positions of **vertex1S1** and **vertex2S1**. The method returns a negative number if the sections don't intersect, positive if intersect, zero if some section end belongs to another section. Overloaded method with **tolerance** parameter tests if the sections are close enough to each other to consider them intersecting. Tolerance is an angle in radians at the coordinates origin, real distance on the surface is tolerance\*sphere_radius.
 
 ### InsidePolygon extension method
 
-	public static bool InsidePolygon(this ICartesian cartesian, IEnumerable<ICartesian> polygon)
+	public static bool InsidePolygon(this ICartesian cartesian, IEnumerable<ICartesian> polygon, bool includeBorders)
 
-This method checks if the vector **cartesian** is inside the spherical polygon using Ray casting algorithm. The polygon can be of any shape. If the polygon is a convex, it is better to use **InsideConvex** method. 
+This method checks if a vector **cartesian** is inside a polygon using winding number algorithm. The polygon can be of any shape. If the polygon is a convex, it is better to use **InsideConvex** method. With **includeBorders** parameter set to false, this method will return false to points located on the polygon border. Example:
+
+    string line = "svx}FhefvOa_HfsDykA~zKleIv_C`_Bo`Ggr@}wFhrCglA|kBlyNalJhvIkeJquEwkAqcLbrA{bHbrDy{D";
+    var polygon = SphericalExtension.DecodeGooglePolyline<GeoCoordinate>(line);
+
+    GeoCoordinate location = polygon[0];
+    bool result = location.InsidePolygon(polygon, false); // result is false
+    result = location.InsidePolygon(polygon, true); // result is true
 
 ### TestSection extension method
 
 	public static double TestSection(this ICartesian cartesian, ICartesian vertex1, ICartesian vertex2)
 
-This method checks if the vector **cartesian** is between two vectors **vertex1** and **vertex2**. First, it builds a plane using **vertex1** and **vertex2**. Then it takes an angle between the vector **cartesian** and this plane and corrects it with PI/2 angle. The method returns this angle, its positive value indicates that **cartesian** is between the vectors, negative if not. The next step is to build another plane containing **cartesian** and perpendicular to the plane obtained in the first step. Finally, it checks positions of **vertex1** and **vertex2** relative to this plane. If they are on the opposite sides, the result is positive.
+This method checks if a vector **cartesian** is between two vectors **vertex1** and **vertex2**. First, it builds a plane using **vertex1** and **vertex2**. Then it takes an angle between the vector **cartesian** and this plane and corrects it with PI/2 angle. The method returns this angle, its positive value indicates that **cartesian** is between the vectors, negative if not. The next step is to build another plane containing **cartesian** and perpendicular to the plane obtained in the first step. Finally, it checks positions of **vertex1** and **vertex2** relative to this plane. If they are on the opposite sides, the result is positive.
 
 ![Test section](http://www.aleprojects.com/upload/images/test_section.jpg)
 
@@ -111,9 +118,9 @@ This drawing demonstrates **TestSection** method. If to call C.TestSection(V1,V2
 	public static int TestPolyline(this ICartesian cartesian, IEnumerable<ICartesian> polyline, double tolerance, bool reverse, Func<ICartesian, ICartesian, ICartesian, double, double, bool> userTest, out double angleFromPolyline)
 	public static PolylineTestResult TestPolyline(this ICartesian cartesian, IEnumerable<ICartesian> polyline, double tolerance, bool reverse, Func<ICartesian, ICartesian, ICartesian, double, double, bool> userTest, PolylineTestResult result)
 
-This method works in a similar way as **TestSection**. It applies **TestSection** to all sections of the polyline with some additional checks. First additional check is how far from the polyline the point can stand. The tolerance parameter is an angle in radians at the coordinates origin, it represents maximum distance as tolerance\*sphere_radius. Second optional check is the **userTest** delegate, if it is not null.  If the task is only to check the position of a point relative to a polyline, no need to use delegate. If the task is to guide moving point along directional route polyline, then the delegate is required.
+This method works in a similar way as **TestSection**. It applies **TestSection** to all sections of the polyline with some additional checks. First additional check is how far from the polyline the point can stand. The **tolerance** parameter is an angle in radians at the coordinates origin, it represents maximum distance as tolerance\*sphere_radius. Second optional check is the **userTest** delegate, if it is not null.  If the task is only to check the position of a point relative to a polyline, no need to use delegate. If the task is to guide moving point along directional route polyline, then the delegate is required.
 
-Example
+Example:
 
 ![Test polyline](http://www.aleprojects.com/upload/images/test_polyline_1.png) 
 
@@ -147,10 +154,9 @@ In most cases the **geometryTest** delegate is called with v0 = null and v1, v2 
 
 ![Test polyline](http://www.aleprojects.com/upload/images/test_polyline2.jpg)
 
-Sometimes it is possible that the point is close enough to some vertex of polyline, but failed the **TestSection** for both sections. Point C' on the drawing demostrates this situation. When such a thing happens, v0 parameter is not a null. In this case we need to make additional test for its heading. First, we compare the heading with the azimuth of v0,v1 (points marked 0, 1 on the drawing). If this test fails, we check if the heading is within range of the azimuths of neighbour sections. **HeadingInRange** is the standard extension method. 
+Sometimes it is possible that the point is close enough to some vertex of polyline, but failed the **TestSection** for both sections. Point C' on the drawing demonstrates this situation. When such a thing happens, v0 parameter is not null. In this case we need to make additional test for the heading. First, we compare the heading with the azimuth of v0,v1 (points marked 0, 1 on the drawing). If this test fails, we check if the heading is within range of the azimuths of neighbour sections. **HeadingInRange** is the standard extension method. 
 
-Finally, if polyline test succeds, it return non-null object of PolylineTestResult type.
-**SectionIndex** property contains index of the section found, the same as the index of the first vertex of the section. There is useful method **DistanceToEnd** returning a distance along the polyline from the point to the end.
+Finally, if the polyline test succeeds, it return non-null object of **PolylineTestResult** type. **SectionIndex** property contains index of the section found, the same as the index of the first vertex of the section. There is useful method **DistanceToEnd** returning a distance along the polyline from the point to the end.
 
 If we apply **TestPolyline** to the next received point with the same polyline and with the result for the previous point, new test will begin from **SectionIndex** vertex of the polyline.
 

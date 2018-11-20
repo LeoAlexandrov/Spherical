@@ -475,7 +475,7 @@ namespace AleProjects.Spherical
 
 		// properties
 
-		public static double Precision { get; set; } = EPSILON;
+		//public static double Precision { get; set; } = EPSILON;
 
 		/// <summary>
 		/// Maximum latitude in radians a map based on Mercator projection can display.
@@ -940,42 +940,6 @@ namespace AleProjects.Spherical
 		}
 
 		/// <summary>
-		/// Finds problem vertices which make a polygon not a convex.
-		/// </summary>
-		/// <param name="polygon">Polygon to examine.</param>
-		/// <returns>Bool array of size equal to polygon size, elements with True value correspond to problem vertices.</returns>
-		[Obsolete]
-		public static bool[] ProblemPolygonVertices(IList<ICartesian> polygon)
-		{
-			bool[] result = new bool[polygon.Count];
-			int n = polygon.Count - 2;
-			int sign;
-			int k = 0;
-
-			do
-			{
-				sign = Math.Sign(polygon[k].TripleProduct(polygon[k + 1], polygon[k + 2]));
-				k++;
-			}
-			while (k < n && sign == 0);
-
-			int tsign;
-
-			for (int i = k; i < n; i++)
-				result[i + 1] = (tsign = Math.Sign(polygon[i].TripleProduct(polygon[i + 1], polygon[i + 2]))) != 0 && tsign * sign < 0;
-
-			result[n + 1] = (tsign = Math.Sign(polygon[n].TripleProduct(polygon[n + 1], polygon[0]))) != 0 && tsign * sign < 0;
-			result[0] = (tsign = Math.Sign(polygon[n + 1].TripleProduct(polygon[0], polygon[1]))) != 0 && tsign * sign < 0;
-
-			n = result.Count(r => r);
-
-			if (n > result.Length - n)
-				for (int i = 0; i < result.Length; i++) result[i] = !result[i];
-
-			return result;
-		}
-
-		/// <summary>
 		/// Returns an array of angles between planes formed by vertices of a polygon. Any negative angle in the returned array indicates that the polygon is not a convex.
 		/// </summary>
 		/// <param name="polygon">Polygon to examine.</param>
@@ -1030,53 +994,52 @@ namespace AleProjects.Spherical
 		}
 
 		/// <summary>
-		/// Extension method testing if a vector is inside a polygon.
+		/// Extension method testing if a vector is inside a polygon. Uses Winding number method.
 		/// </summary>
 		/// <param name="cartesian">Vector to test.</param>
 		/// <param name="polygon">Vertices of the polygon.</param>
+		/// <param name="includeBorders">Include borders of the polygon when true.</param>
 		/// <returns>True if inside.</returns>
-		public static bool InsidePolygon(this ICartesian cartesian, IEnumerable<ICartesian> polygon)
+		public static bool InsidePolygon(this ICartesian cartesian, IEnumerable<ICartesian> polygon, bool includeBorders)
 		{
-			double maxCosine = double.MaxValue;
-			double cosine = 0.0;
-			int i = 0;
+			CartesianStruct N1;
+			double wn = 0.0;
+			ICartesian previous = polygon.Last();
 
-			foreach (var vertex in polygon)
+			CartesianStruct N = cartesian.CrossProduct<CartesianStruct>(previous, false);
+
+			foreach (ICartesian current in polygon)
 			{
-				if ((cosine = cartesian.Cosine(vertex)) < maxCosine) maxCosine = cosine;
+				N1 = cartesian.CrossProduct<CartesianStruct>(current, false);
 
-				i++;
+				if (cartesian.TripleProduct(previous, current) > 0.0)
+					wn += N.Angle(N1);
+				else
+					wn -= N.Angle(N1);
+
+				N = N1;
+				previous = current;
 			}
 
-			ICartesian first = polygon.First();
-			ICartesian last = polygon.Last();
-			Cartesian midPoint = last.DivideLineInRatio<Cartesian>(first, 0.5, true);
-			Cartesian axis = cartesian.CrossProduct<Cartesian>(midPoint, false);
-			Cartesian rotated = cartesian.Rotate<Cartesian>(Math.Acos(maxCosine), axis);
+			bool result = Math.Abs(wn) >= 2.0 * Math.PI;
 
-			int intersections;
-			int res = SectionsIntersect(cartesian, rotated, first, last);
-
-			if (res == 0) intersections = 1;
-			else if (res > 0) intersections = 2;
-			else intersections = 0;
-
-			ICartesian previous = first;
-
-			foreach (var vertex in polygon.Skip(1))
+			if (!result && includeBorders)
 			{
-				res = SectionsIntersect(cartesian, rotated, previous, vertex);
+				previous = polygon.Last();
 
-				if (res == 0) intersections++;
-				else if (res > 0) intersections += 2;
+				foreach (ICartesian current in polygon)
+				{
+					if (Math.Abs(cartesian.TripleProduct(previous, current)) < EPSILON)
+					{
+						result = true;
+						break;
+					}
 
-				previous = vertex;
+					previous = current;
+				}
 			}
 
-
-			intersections /= 2;
-
-			return intersections % 2 != 0;
+			return result;
 		}
 
 		/// <summary>
@@ -1170,7 +1133,10 @@ namespace AleProjects.Spherical
 		/// <returns>Cosine of the angle between two vectors.</returns>
 		public static double Cosine(this ICartesian cartesian, ICartesian V)
 		{
-			return (cartesian.X * V.X + cartesian.Y * V.Y + cartesian.Z * V.Z) / (cartesian.VectorLength() * V.VectorLength());
+			double result = (cartesian.X * V.X + cartesian.Y * V.Y + cartesian.Z * V.Z) / (cartesian.VectorLength() * V.VectorLength());
+			if (Math.Abs(result) > 1.0) result = Math.Truncate(result);
+
+			return result;
 		}
 
 		/// <summary>
@@ -1183,7 +1149,10 @@ namespace AleProjects.Spherical
 		/// <returns>Cosine of the angle between two vectors.</returns>
 		public static double Cosine(this ICartesian cartesian, double x, double y, double z)
 		{
-			return (cartesian.X * x + cartesian.Y * y + cartesian.Z * z) / (cartesian.VectorLength() * Math.Sqrt(x * x + y * y + z * z));
+			double result = (cartesian.X * x + cartesian.Y * y + cartesian.Z * z) / (cartesian.VectorLength() * Math.Sqrt(x * x + y * y + z * z));
+			if (Math.Abs(result) > 1.0) result = Math.Truncate(result);
+
+			return result;
 		}
 
 		/// <summary>
@@ -1196,8 +1165,10 @@ namespace AleProjects.Spherical
 		public static double Cosine(this ICartesian cartesian, double dec, double ra)
 		{
 			double c_dec = cartesian.Dec();
+			double result = Math.Cos(c_dec) * Math.Cos(dec) * (Math.Cos(cartesian.Ra() - ra) - 1.0) + Math.Cos(c_dec - dec);
+			if (Math.Abs(result) > 1.0) result = Math.Truncate(result);
 
-			return Math.Cos(c_dec) * Math.Cos(dec) * (Math.Cos(cartesian.Ra() - ra) - 1.0) + Math.Cos(c_dec - dec);
+			return result;
 		}
 
 		/// <summary>
@@ -1234,8 +1205,10 @@ namespace AleProjects.Spherical
 		public static double Angle(this ICartesian cartesian, double dec, double ra)
 		{
 			double c_dec = cartesian.Dec();
+			double result = Math.Cos(c_dec) * Math.Cos(dec) * (Math.Cos(cartesian.Ra() - ra) - 1.0) + Math.Cos(c_dec - dec);
+			if (Math.Abs(result) > 1.0) result = Math.Truncate(result);
 
-			return Math.Acos(Math.Cos(c_dec) * Math.Cos(dec) * (Math.Cos(cartesian.Ra() - ra) - 1.0) + Math.Cos(c_dec - dec));
+			return Math.Acos(result);
 		}
 
 		/// <summary>
@@ -1293,22 +1266,17 @@ namespace AleProjects.Spherical
 			double l1 = x1 * vertex1S2.X + y1 * vertex1S2.Y + z1 * vertex1S2.Z;
 			double l2 = x1 * vertex2S2.X + y1 * vertex2S2.Y + z1 * vertex2S2.Z;
 
-			if (Math.Abs(l1) < Precision ||
-				Math.Abs(l2) < Precision) return 0;
+			if (l1 * l2 < 0)
+			{
+				var (x2, y2, z2) = vertex1S2.CrossProduct(vertex2S2);
+				length = Math.Sqrt(x2 * x2 + y2 * y2 + z2 * z2);
+				x2 /= length;
+				y2 /= length;
+				z2 /= length;
 
-			if (l1 * l2 >= 0.0) return -1;
-
-			var (x2, y2, z2) = vertex1S2.CrossProduct(vertex2S2);
-			length = Math.Sqrt(x2 * x2 + y2 * y2 + z2 * z2);
-			x2 /= length;
-			y2 /= length;
-			z2 /= length;
-
-			l1 = x2 * vertex1S1.X + y2 * vertex1S1.Y + z2 * vertex1S1.Z;
-			l2 = x2 * vertex2S1.X + y2 * vertex2S1.Y + z2 * vertex2S1.Z;
-
-			if (Math.Abs(l1) < Precision ||
-				Math.Abs(l2) < Precision) return 0;
+				l1 = x2 * vertex1S1.X + y2 * vertex1S1.Y + z2 * vertex1S1.Z;
+				l2 = x2 * vertex2S1.X + y2 * vertex2S1.Y + z2 * vertex2S1.Z;
+			}
 
 			return -Math.Sign(l1 * l2);
 		}
@@ -1333,9 +1301,6 @@ namespace AleProjects.Spherical
 			double l1 = x1 * vertex1S2.X + y1 * vertex1S2.Y + z1 * vertex1S2.Z;
 			double l2 = x1 * vertex2S2.X + y1 * vertex2S2.Y + z1 * vertex2S2.Z;
 
-			if (Math.Abs(l1) < Precision ||
-				Math.Abs(l2) < Precision) return 0;
-
 			if (l1 * l2 < 0.0)
 			{
 				var (x2, y2, z2) = vertex1S2.CrossProduct(vertex2S2);
@@ -1346,9 +1311,6 @@ namespace AleProjects.Spherical
 
 				l1 = x2 * vertex1S1.X + y2 * vertex1S1.Y + z2 * vertex1S1.Z;
 				l2 = x2 * vertex2S1.X + y2 * vertex2S1.Y + z2 * vertex2S1.Z;
-
-				if (Math.Abs(l1) < Precision ||
-					Math.Abs(l2) < Precision) return 0;
 			}
 
 			int sign = -Math.Sign(l1 * l2);

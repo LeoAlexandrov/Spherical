@@ -8,7 +8,7 @@ On every next step (level), each tile is splitted to 4 smaller tiles, 2 bits req
 
 ![Sphere triangle tile](http://www.aleprojects.com/upload/images/sphere-triangle.png)
 
-64-bit integer can address a sphere tile of up to 30 level. Such key can be assigned to sphere objects and it will allow to retrieve them from a database or hash-table very quickly. 
+64-bit integer can address a sphere tile of up to 30 level. Such key can be assigned to sphere objects and will allow to retrieve them from a database or hash-table very quickly. 
 
 Example
 

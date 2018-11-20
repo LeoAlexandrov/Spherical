@@ -744,9 +744,9 @@ namespace AleProjects.Spherical.Grid
 			}
 
 			return EnclosesPolygon(polygon) ||
-				Vertex1.InsidePolygon(polygon) ||
-				Vertex2.InsidePolygon(polygon) ||
-				Vertex3.InsidePolygon(polygon);
+				Vertex1.InsidePolygon(polygon, false) ||
+				Vertex2.InsidePolygon(polygon, false) ||
+				Vertex3.InsidePolygon(polygon, false);
 		}
 
 		/// <summary>
