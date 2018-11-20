@@ -34,7 +34,7 @@ This is the visualization of tiles at the 14th level covering the circle with th
 
 ![Tiles covering a circle](http://www.aleprojects.com/upload/images/tiles-circle.jpg)
 
-Suppose we have some database table
+Suppose we have some database table:
     
     public class MyDataContext : DataContext
     {
@@ -114,7 +114,11 @@ Pictures below demonstrates coverage of circles with 4000m and 1000m radius and 
 
 ![Tiles covering a circle](http://www.aleprojects.com/upload/images/circle-to-triangle-4.jpg)
 
+4000 m and 1000 m circles with 4 circle-to-triangle ratio.
+
 ![Tiles covering a circle](http://www.aleprojects.com/upload/images/circle-to-triangle-64.jpg)
+
+4000 m and 1000 m circles with 64 circle-to-triangle ratio.
 
 With **circleToTriangleRatio** = 64 coverage is more precise, but produces more tiles.  
 
