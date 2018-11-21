@@ -432,8 +432,6 @@ namespace AleProjects.Spherical
 
 		public PolylineTestResult(IEnumerable<ICartesian> polyline, bool reverse)
 		{
-			if (polyline == null) throw new ArgumentNullException();
-
 			SectionsAngles = new double[polyline.Count() - 1];
 			IEnumerable<ICartesian> vertices = reverse ? polyline.Reverse().Skip(1) : polyline.Skip(1);
 			ICartesian previous = reverse ? polyline.Last() : polyline.First();
@@ -458,6 +456,12 @@ namespace AleProjects.Spherical
 		public const double EPSILON = 1.0e-15;
 		public const double EPSILON_GEO = 1.0e-8;
 
+		private const string Error_Message_Null_Axis_Vector = "Rotation axis can't be a null-vector.";
+		private const string Error_Message_Not_Polygon = "Parameter is not a polygon.";
+		private const string Error_Message_Not_Convex = "Parameter is not a convex.";
+		private const string Error_Message_Not_Polyline = "Parameter is not a polyline.";
+		private const string Error_Message_Empty_Collection = "Collection can't be empty.";
+
 
 		private struct CartesianStruct : ICartesian
 		{
@@ -470,6 +474,11 @@ namespace AleProjects.Spherical
 				X = x;
 				Y = y;
 				Z = z;
+			}
+
+			public override string ToString()
+			{
+				return string.Format("({0}; {1}; {2})", X, Y, Z);
 			}
 		}
 
@@ -720,7 +729,8 @@ namespace AleProjects.Spherical
 		{
 			double L = axis.VectorLength();
 
-			if (Math.Abs(L) < EPSILON) throw new ArgumentException();
+			if (Math.Abs(L) < EPSILON)
+				throw new ArgumentException(Error_Message_Null_Axis_Vector, "axis");
 
 			double cosine = Math.Cos(angle);
 			double sine = Math.Sin(angle);
@@ -907,34 +917,16 @@ namespace AleProjects.Spherical
 		/// </summary>
 		/// <param name="polygon">Polygon to test.</param>
 		/// <returns>True if a convex.</returns>
-		public static bool IsConvex(IList<ICartesian> polygon)
+		public static bool IsConvex(IEnumerable<ICartesian> polygon)
 		{
-			int n = polygon.Count - 2;
-			int sign;
-			int k = 0;
+			bool result;
 
-			do
+			if (polygon != null && polygon.Count() > 2)
 			{
-				sign = Math.Sign(polygon[k].TripleProduct(polygon[k + 1], polygon[k + 2]));
-				k++;
+				double[] info = PolygonInfo(polygon);
+				result = info.All(i => i > 0.0);
 			}
-			while (k < n && sign == 0);
-
-			int tsign;
-			bool result = true;
-
-			for (int i = k; i < n; i++)
-				if ((tsign = Math.Sign(polygon[i].TripleProduct(polygon[i + 1], polygon[i + 2]))) != 0 && tsign * sign < 0)
-				{
-					result = false;
-					break;
-				}
-
-			if (result &&
-				(tsign = Math.Sign(polygon[n].TripleProduct(polygon[n + 1], polygon[0]))) != 0) result = tsign * sign > 0;
-
-			if (result &&
-				(tsign = Math.Sign(polygon[n + 1].TripleProduct(polygon[0], polygon[1]))) != 0) result = tsign * sign > 0;
+			else result = false;
 
 			return result;
 		}
@@ -946,8 +938,10 @@ namespace AleProjects.Spherical
 		/// <returns>Array of double with angles between planes.</returns>
 		public static double[] PolygonInfo(IEnumerable<ICartesian> polygon)
 		{
-			double[] result = new double[polygon.Count()];
+			int n = polygon.Count();
+			if (n < 3) throw new ArgumentException(Error_Message_Not_Polygon, "polygon");
 
+			double[] result = new double[n];
 			ICartesian first = polygon.First();
 			ICartesian previous = polygon.Last();
 			ICartesian current = first;
@@ -977,20 +971,33 @@ namespace AleProjects.Spherical
 		}
 
 		/// <summary>
-		/// Extension method testing if a vector is inside a convex.
+		/// Extension method testing if a vector is inside a convex including its borders.
 		/// </summary>
 		/// <param name="cartesian">Vector to test.</param>
 		/// <param name="vertices">Vertices of the convex.</param>
 		/// <returns>True if inside.</returns>
-		public static bool InsideConvex(this ICartesian cartesian, IList<ICartesian> polygon)
+		public static bool InsideConvex(this ICartesian cartesian, IEnumerable<ICartesian> polygon)
 		{
-			int n = polygon.Count - 1;
+			if (polygon.Count() < 3) throw new ArgumentException(Error_Message_Not_Polygon, "polygon");
+
+			ICartesian first = polygon.First();
+			ICartesian previous = polygon.Last();
+			ICartesian current = first;
 			bool result = false;
 
-			for (int i = 1; i < n & !result; i++)
-				result |= cartesian.InsideTriangle(polygon[0], polygon[i], polygon[i + 1]);
+			foreach (ICartesian next in polygon.Skip(1))
+			{
+				if (cartesian.InsideTriangle(previous, current, next))
+				{
+					result = true;
+					break;
+				}
 
-			return result;
+				previous = current;
+				current = next;
+			}
+
+			return result || cartesian.InsideTriangle(previous, current, first);
 		}
 
 		/// <summary>
@@ -1002,9 +1009,12 @@ namespace AleProjects.Spherical
 		/// <returns>True if inside.</returns>
 		public static bool InsidePolygon(this ICartesian cartesian, IEnumerable<ICartesian> polygon, bool includeBorders)
 		{
+			if (polygon.Count() < 3) throw new ArgumentException(Error_Message_Not_Polygon, "polygon");
+
 			CartesianStruct N1;
 			double wn = 0.0;
-			ICartesian previous = polygon.Last();
+			ICartesian last = polygon.Last();
+			ICartesian previous = last;
 
 			CartesianStruct N = cartesian.CrossProduct<CartesianStruct>(previous, false);
 
@@ -1025,7 +1035,7 @@ namespace AleProjects.Spherical
 
 			if (!result && includeBorders)
 			{
-				previous = polygon.Last();
+				previous = last;
 
 				foreach (ICartesian current in polygon)
 				{
@@ -1052,43 +1062,36 @@ namespace AleProjects.Spherical
 		public static List<T> InflateConvex<T>(IEnumerable<ICartesian> polygon, IList<double> angles) where T : ICartesian, new()
 		{
 			int n = polygon.Count();
+			if (n < 3) throw new ArgumentException(Error_Message_Not_Polygon, "polygon");
+
 			int m = angles.Count;
+			if (m == 0) throw new ArgumentException(Error_Message_Empty_Collection, "angles");
 
-			if (n < 3 || m == 0) throw new ArgumentException();
-
-			bool clockwise = false;
-			int sign;
-			Cartesian center = null;
 			ICartesian first = polygon.First();
 			ICartesian last = polygon.Last();
 			ICartesian previous = last;
 			ICartesian current = first;
+			bool? cw = null;
+			double x;
 
 			foreach (ICartesian next in polygon.Skip(1))
 			{
-				if ((sign = Math.Sign(previous.TripleProduct(current, next))) != 0)
-				{
-					clockwise = sign > 0;
-					center = previous.DivideLineInRatio<Cartesian>(next, 0.5, false);
-					break;
-				}
+				if (Math.Abs(x = previous.TripleProduct(current, next)) < EPSILON) throw new ArgumentException(Error_Message_Not_Convex, "polygon");
+
+				if (!cw.HasValue) cw = Math.Sign(x) > 0.0;
+				else if (cw.Value != Math.Sign(x) > 0.0) throw new ArgumentException(Error_Message_Not_Convex, "polygon");
 
 				previous = current;
 				current = next;
 			}
 
-			if (center == null)
-			{
-				ICartesian next = first;
+			if (Math.Abs(x = previous.TripleProduct(current, first)) < EPSILON) throw new ArgumentException(Error_Message_Not_Convex, "polygon");
 
-				if ((sign = Math.Sign(previous.TripleProduct(current, next))) != 0)
-				{
-					clockwise = sign > 0;
-					center = previous.DivideLineInRatio<Cartesian>(next, 0.5, false);
-				}
-				else throw new ArgumentException();
-			}
+			if (!cw.HasValue) cw = Math.Sign(x) > 0.0;
+			else if (cw.Value != Math.Sign(x) > 0.0) throw new ArgumentException(Error_Message_Not_Convex, "polygon");
 
+
+			bool clockwise = cw.Value;
 			CartesianStruct[] planes = new CartesianStruct[n];
 			CartesianStruct N, axis;
 			previous = last;
@@ -1111,16 +1114,14 @@ namespace AleProjects.Spherical
 
 			for (i = 0; i < n - 1; i++)
 			{
-				res = planes[i].CrossProduct<T>(planes[i + 1], true);
+				res = planes[i].CrossProduct<T>(planes[i + 1], false);
 				if (!clockwise) res.SetCartesian(-res.X, -res.Y, -res.Z);
 				result.Add(res);
 			}
 
-			res = planes[n - 1].CrossProduct<T>(planes[0], true);
+			res = planes[n - 1].CrossProduct<T>(planes[0], false);
 			if (!clockwise) res.SetCartesian(-res.X, -res.Y, -res.Z);
 			result.Add(res);
-
-			if (result.Any(p => double.IsNaN(p.X) || double.IsNaN(p.Y) || double.IsNaN(p.Z) || p.VectorLength() < EPSILON)) result = null;
 
 			return result;
 		}
@@ -1369,6 +1370,8 @@ namespace AleProjects.Spherical
 		/// <returns>Index of a vertex which is a start of closest polyline segment. -1 if test fails.</returns>
 		public static int TestPolyline(this ICartesian cartesian, IEnumerable<ICartesian> polyline, double tolerance, bool reverse, Func<ICartesian, ICartesian, ICartesian, double, double, bool> userTest, out double angleFromPolyline)
 		{
+			if (polyline.Count() < 2) throw new ArgumentException(Error_Message_Not_Polygon, "polyline");
+
 			double res, azimuth, angle;
 
 			IEnumerable<ICartesian> vertices = reverse ? polyline.Reverse().Skip(1) : polyline.Skip(1);
@@ -1444,6 +1447,8 @@ namespace AleProjects.Spherical
 		/// <returns>Returns new or modified previous PolylineTestResult object. Null if first test fails or increased property Fails of returned PolylineTestResult object</returns>
 		public static PolylineTestResult TestPolyline(this ICartesian cartesian, IEnumerable<ICartesian> polyline, double tolerance, bool reverse, Func<ICartesian, ICartesian, ICartesian, double, double, bool> userTest, PolylineTestResult result)
 		{
+			if (polyline.Count() < 2) throw new ArgumentException(Error_Message_Not_Polygon, "polyline");
+
 			double res, azimuth, angle;
 
 			IEnumerable<ICartesian> vertices = reverse ? polyline.Reverse().Skip(1) : polyline.Skip(1);
@@ -2054,8 +2059,7 @@ namespace AleProjects.Spherical
 		/// <param name="NE">Out parameter with the area North-East corner.</param>
 		public static void GetBounds<T>(IEnumerable<IGeoCoordinate> locations, out T SW, out T NE) where T : IGeoCoordinate, new()
 		{
-			if (locations == null || 
-				!locations.Any()) throw new ArgumentException();
+			if (!locations.Any()) throw new ArgumentException(Error_Message_Empty_Collection, "locations");
 
 			double minLat = double.MaxValue;
 			double minLon = double.MaxValue;
@@ -2090,8 +2094,7 @@ namespace AleProjects.Spherical
 		/// <returns>Length of the polyline in meters.</returns>
 		public static double GetLength(IEnumerable<IGeoCoordinate> locations, double sphereRadius = EARTH_MEAN_RADIUS)
 		{
-			if (locations == null || 
-				!locations.Any()) throw new ArgumentException();
+			if (locations.Count() < 2) throw new ArgumentException(Error_Message_Not_Polyline, "locations");
 
 			double result = 0.0;
 			IGeoCoordinate previous = locations.First();
