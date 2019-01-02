@@ -484,8 +484,6 @@ namespace AleProjects.Spherical
 
 		// properties
 
-		//public static double Precision { get; set; } = EPSILON;
-
 		/// <summary>
 		/// Maximum latitude in radians a map based on Mercator projection can display.
 		/// </summary>
@@ -509,7 +507,6 @@ namespace AleProjects.Spherical
 
 			return result;
 		}
-
 
 		// ICartesian extension methods
 
@@ -563,6 +560,32 @@ namespace AleProjects.Spherical
 			return Math.Atan2(cartesian.Y, cartesian.X) * 180.0 / Math.PI;
 		}
 
+		/// <summary>
+		/// Tests if a vector is zero-vector, i.e X,Y,Z components are equal to 0 with given precision. 
+		/// </summary>
+		/// <param name="cartesian">Vector to test.</param>
+		/// <param name="precision">Precision of comparing X,Y,Z components with 0.</param>
+		/// <returns></returns>
+		public static bool IsZeroVector(this ICartesian cartesian, double precision)
+		{
+			return Math.Abs(cartesian.X) <= precision &&
+				Math.Abs(cartesian.Y) <= precision &&
+				Math.Abs(cartesian.Z) <= precision;
+		}
+
+		/// <summary>
+		/// Tests if a vector is the same as another one with given precision.
+		/// </summary>
+		/// <param name="cartesian">Vector to test.</param>
+		/// <param name="other">Vector to compare with.</param>
+		/// <param name="precision">Precision of comparing X,Y,Z components. Can be zero, what means exact equality.</param>
+		/// <returns>True if the same.</returns>
+		public static bool SameAs(this ICartesian cartesian, ICartesian other, double precision)
+		{
+			return Math.Abs(cartesian.X - other.X) <= precision &&
+				Math.Abs(cartesian.Y - other.Y) <= precision &&
+				Math.Abs(cartesian.Z - other.Z) <= precision;
+		}
 
 		/// <summary>
 		/// Extension method normalizing the specified vector.
@@ -578,6 +601,7 @@ namespace AleProjects.Spherical
 			return len;
 		}
 
+
 		public static T Add<T>(this ICartesian cartesian, ICartesian V, bool normalize) where T : ICartesian, new()
 		{
 			double x = cartesian.X + V.X;
@@ -587,9 +611,13 @@ namespace AleProjects.Spherical
 			if (normalize)
 			{
 				double l = Math.Sqrt(x * x + y * y + z * z);
-				x /= l;
-				y /= l;
-				z /= l;
+
+				if (l > 0.0)
+				{
+					x /= l;
+					y /= l;
+					z /= l;
+				}
 			}
 
 			return NewCartesianDerivative<T>(x, y, z);
@@ -614,9 +642,13 @@ namespace AleProjects.Spherical
 			if (normalize)
 			{
 				double l = Math.Sqrt(x1 * x1 + y1 * y1 + z1 * z1);
-				x1 /= l;
-				y1 /= l;
-				z1 /= l;
+
+				if (l > 0.0)
+				{
+					x1 /= l;
+					y1 /= l;
+					z1 /= l;
+				}
 			}
 
 			return NewCartesianDerivative<T>(x1, y1, z1);
@@ -806,9 +838,13 @@ namespace AleProjects.Spherical
 			if (normalize)
 			{
 				double l = Math.Sqrt(x * x + y * y + z * z);
-				x /= l;
-				y /= l;
-				z /= l;
+
+				if (l > 0.0)
+				{
+					x /= l;
+					y /= l;
+					z /= l;
+				}
 			}
 
 			return NewCartesianDerivative<T>(x, y, z);
@@ -1001,22 +1037,24 @@ namespace AleProjects.Spherical
 		}
 
 		/// <summary>
-		/// Extension method testing if a vector is inside a polygon. Uses Winding number method.
+		/// Extension method testing if a vector is inside a polygon (including borders). Uses Winding number method.
 		/// </summary>
 		/// <param name="cartesian">Vector to test.</param>
 		/// <param name="polygon">Vertices of the polygon.</param>
-		/// <param name="includeBorders">Include borders of the polygon when true.</param>
 		/// <returns>True if inside.</returns>
-		public static bool InsidePolygon(this ICartesian cartesian, IEnumerable<ICartesian> polygon, bool includeBorders)
+		public static bool InsidePolygon(this ICartesian cartesian, IEnumerable<ICartesian> polygon)
 		{
 			if (polygon.Count() < 3) throw new ArgumentException(Error_Message_Not_Polygon, "polygon");
 
-			CartesianStruct N1;
-			double wn = 0.0;
+			if (polygon.Any(v => v.SameAs(cartesian, 0.0))) return true; 
+
 			ICartesian last = polygon.Last();
 			ICartesian previous = last;
 
 			CartesianStruct N = cartesian.CrossProduct<CartesianStruct>(previous, false);
+			CartesianStruct N1;
+
+			double wn = 0.0;
 
 			foreach (ICartesian current in polygon)
 			{
@@ -1031,25 +1069,7 @@ namespace AleProjects.Spherical
 				previous = current;
 			}
 
-			bool result = Math.Abs(wn) >= 2.0 * Math.PI;
-
-			if (!result && includeBorders)
-			{
-				previous = last;
-
-				foreach (ICartesian current in polygon)
-				{
-					if (Math.Abs(cartesian.TripleProduct(previous, current)) < EPSILON)
-					{
-						result = true;
-						break;
-					}
-
-					previous = current;
-				}
-			}
-
-			return result;
+			return Math.Abs(wn) > Math.PI;
 		}
 
 		/// <summary>
@@ -1259,27 +1279,18 @@ namespace AleProjects.Spherical
 		public static int SectionsIntersect(ICartesian vertex1S1, ICartesian vertex2S1, ICartesian vertex1S2, ICartesian vertex2S2)
 		{
 			var (x1, y1, z1) = vertex1S1.CrossProduct(vertex2S1);
-			double length = Math.Sqrt(x1 * x1 + y1 * y1 + z1 * z1);
-			x1 /= length;
-			y1 /= length;
-			z1 /= length;
+			double tp1 = x1 * vertex1S2.X + y1 * vertex1S2.Y + z1 * vertex1S2.Z;
+			double tp2 = x1 * vertex2S2.X + y1 * vertex2S2.Y + z1 * vertex2S2.Z;
 
-			double l1 = x1 * vertex1S2.X + y1 * vertex1S2.Y + z1 * vertex1S2.Z;
-			double l2 = x1 * vertex2S2.X + y1 * vertex2S2.Y + z1 * vertex2S2.Z;
-
-			if (l1 * l2 < 0)
+			if (tp1 * tp2 <= 0.0)
 			{
 				var (x2, y2, z2) = vertex1S2.CrossProduct(vertex2S2);
-				length = Math.Sqrt(x2 * x2 + y2 * y2 + z2 * z2);
-				x2 /= length;
-				y2 /= length;
-				z2 /= length;
 
-				l1 = x2 * vertex1S1.X + y2 * vertex1S1.Y + z2 * vertex1S1.Z;
-				l2 = x2 * vertex2S1.X + y2 * vertex2S1.Y + z2 * vertex2S1.Z;
+				tp1 = x2 * vertex1S1.X + y2 * vertex1S1.Y + z2 * vertex1S1.Z;
+				tp2 = x2 * vertex2S1.X + y2 * vertex2S1.Y + z2 * vertex2S1.Z;
 			}
 
-			return -Math.Sign(l1 * l2);
+			return -Math.Sign(tp1 * tp2);
 		}
 
 		/// <summary>
@@ -1293,37 +1304,17 @@ namespace AleProjects.Spherical
 		/// <returns></returns>
 		public static int SectionsIntersect(ICartesian vertex1S1, ICartesian vertex2S1, ICartesian vertex1S2, ICartesian vertex2S2, double tolerance)
 		{
-			var (x1, y1, z1) = vertex1S1.CrossProduct(vertex2S1);
-			double length = Math.Sqrt(x1 * x1 + y1 * y1 + z1 * z1);
-			x1 /= length;
-			y1 /= length;
-			z1 /= length;
-
-			double l1 = x1 * vertex1S2.X + y1 * vertex1S2.Y + z1 * vertex1S2.Z;
-			double l2 = x1 * vertex2S2.X + y1 * vertex2S2.Y + z1 * vertex2S2.Z;
-
-			if (l1 * l2 < 0.0)
-			{
-				var (x2, y2, z2) = vertex1S2.CrossProduct(vertex2S2);
-				length = Math.Sqrt(x2 * x2 + y2 * y2 + z2 * z2);
-				x2 /= length;
-				y2 /= length;
-				z2 /= length;
-
-				l1 = x2 * vertex1S1.X + y2 * vertex1S1.Y + z2 * vertex1S1.Z;
-				l2 = x2 * vertex2S1.X + y2 * vertex2S1.Y + z2 * vertex2S1.Z;
-			}
-
-			int sign = -Math.Sign(l1 * l2);
+			int sign = SectionsIntersect(vertex1S1, vertex2S1, vertex1S2, vertex2S2);
 
 			if (sign >= 0 || tolerance <= 0.0) return sign;
 
 			double cos_t = Math.Cos(tolerance);
+			double res;
 
-			if (((l1 = vertex1S1.TestSection(vertex1S2, vertex2S2)) >= 0.0 && l1 < tolerance) ||
-				((l1 = vertex2S1.TestSection(vertex1S2, vertex2S2)) >= 0.0 && l1 < tolerance) ||
-				((l1 = vertex1S2.TestSection(vertex1S1, vertex2S1)) >= 0.0 && l1 < tolerance) ||
-				((l1 = vertex2S2.TestSection(vertex1S1, vertex2S1)) >= 0.0 && l1 < tolerance) ||
+			if (((res = vertex1S1.TestSection(vertex1S2, vertex2S2)) >= 0.0 && res < tolerance) ||
+				((res = vertex2S1.TestSection(vertex1S2, vertex2S2)) >= 0.0 && res < tolerance) ||
+				((res = vertex1S2.TestSection(vertex1S1, vertex2S1)) >= 0.0 && res < tolerance) ||
+				((res = vertex2S2.TestSection(vertex1S1, vertex2S1)) >= 0.0 && res < tolerance) ||
 				vertex1S1.Cosine(vertex1S2) >= cos_t ||
 				vertex1S1.Cosine(vertex2S2) >= cos_t ||
 				vertex2S1.Cosine(vertex1S2) >= cos_t ||
@@ -1353,7 +1344,7 @@ namespace AleProjects.Spherical
 			double l1 = N1.x * vertex1.X + N1.y * vertex1.Y + N1.z * vertex1.Z;
 			double l2 = N1.x * vertex2.X + N1.y * vertex2.Y + N1.z * vertex2.Z;
 
-			if (l1 * l2 > 0.0 || cartesian.DotProduct(vertex1) < 0.0 || cartesian.DotProduct(vertex2) < 0.0) alpha = -alpha;
+			if (l1 * l2 > 0.0 || cartesian.DotProduct(vertex1) < 0.0 || cartesian.DotProduct(vertex2) < 0.0) alpha = -alpha - double.Epsilon;
 
 			return alpha;
 		}
@@ -1590,6 +1581,16 @@ namespace AleProjects.Spherical
 
 		// IGeoCoordinate extension methods
 
+		public static double Latitude(this IGeoCoordinate location)
+		{
+			return location.Lat * 180.0 / Math.PI;
+		}
+
+		public static double Longitude(this IGeoCoordinate location)
+		{
+			return location.Lon * 180.0 / Math.PI;
+		}
+
 		/// <summary>
 		/// Extension method calculating a distance on a sphere with the given radius between two locations with given geocoordinates.
 		/// </summary>
@@ -1794,7 +1795,8 @@ namespace AleProjects.Spherical
 		/// <summary>
 		/// Extension method checking if a location with given latitude and longitude is inside an area with given South-West and North-East corners.
 		/// </summary>
-		/// <param name="location">Location to test.</param>
+		/// <param name="lat">Latitude of the location to test in radians.</param>
+		/// <param name="lon">Longitude of the location to test in radians.</param>
 		/// <param name="SW">Area South-West corner.</param>
 		/// <param name="NE">Area North-East corner.</param>
 		/// <param name="tolerance">Tolerance in radians representing distance on the sphere.</param>
@@ -1875,6 +1877,27 @@ namespace AleProjects.Spherical
 		public static (double dec, double ra) CartesianToSpherical(double x, double y, double z)
 		{
 			return (Math.Asin(z / Math.Sqrt(x * x + y * y + z * z)), Math.Atan2(y, x));
+		}
+
+		/// <summary>
+		/// Returns random unit-vector.
+		/// </summary>
+		/// <typeparam name="T">Must implement ICartesian interface.</typeparam>
+		/// <returns>Random unit-vector.</returns>
+		public static T RandomVector<T>() where T : ICartesian, new()
+		{
+			Random rnd = new Random();
+
+			double x = 1.0 - rnd.NextDouble();
+			double y = 1.0 - rnd.NextDouble();
+			double z = 1.0 - rnd.NextDouble();
+
+			double length = Math.Sqrt(x * x + y * y + z * z);
+
+			T result = new T();
+			result.SetCartesian(x / length, y / length, z / length);
+
+			return result;
 		}
 
 		/// <summary>
