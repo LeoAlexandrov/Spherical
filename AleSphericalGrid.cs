@@ -727,14 +727,9 @@ namespace AleProjects.Spherical.Grid
 		/// <returns>True if the polygon covers this tile.</returns>
 		public bool CoveredByPolygon(IEnumerable<ICartesian> polygon)
 		{
-			ICartesian vertex = polygon.First();
-			ICartesian last = polygon.Last();
+			ICartesian vertex = polygon.Last();;
 
-			if (SphericalExtension.SectionsIntersect(Vertex1, Vertex2, vertex, last) >= 0 ||
-				SphericalExtension.SectionsIntersect(Vertex2, Vertex3, vertex, last) >= 0 ||
-				SphericalExtension.SectionsIntersect(Vertex3, Vertex1, vertex, last) >= 0) return true;
-
-			foreach (ICartesian v in polygon.Skip(1))
+			foreach (ICartesian v in polygon)
 			{
 				if (SphericalExtension.SectionsIntersect(Vertex1, Vertex2, vertex, v) >= 0 ||
 					SphericalExtension.SectionsIntersect(Vertex2, Vertex3, vertex, v) >= 0 ||
@@ -744,9 +739,9 @@ namespace AleProjects.Spherical.Grid
 			}
 
 			return EnclosesPolygon(polygon) ||
-				Vertex1.InsidePolygon(polygon, false) ||
-				Vertex2.InsidePolygon(polygon, false) ||
-				Vertex3.InsidePolygon(polygon, false);
+				Vertex1.InsidePolygon(polygon) ||
+				Vertex2.InsidePolygon(polygon) ||
+				Vertex3.InsidePolygon(polygon);
 		}
 
 		/// <summary>
