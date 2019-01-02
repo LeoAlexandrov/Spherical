@@ -92,16 +92,9 @@ This method checks that two sections (geodesical lines) on a sphere intersect. F
 
 ### InsidePolygon extension method
 
-	public static bool InsidePolygon(this ICartesian cartesian, IEnumerable<ICartesian> polygon, bool includeBorders)
+	public static bool InsidePolygon(this ICartesian cartesian, IEnumerable<ICartesian> polygon)
 
-This method checks if a vector **cartesian** is inside a polygon using winding number algorithm. The polygon can be of any shape. If the polygon is a convex, it is better to use **InsideConvex** method. With **includeBorders** parameter set to false, this method will return false to points located on the polygon border. Example:
-
-    string line = "svx}FhefvOa_HfsDykA~zKleIv_C`_Bo`Ggr@}wFhrCglA|kBlyNalJhvIkeJquEwkAqcLbrA{bHbrDy{D";
-    var polygon = SphericalExtension.DecodeGooglePolyline<GeoCoordinate>(line);
-
-    GeoCoordinate location = polygon[0];
-    bool result = location.InsidePolygon(polygon, false); // result is false
-    result = location.InsidePolygon(polygon, true); // result is true
+This method checks if a vector **cartesian** is inside a polygon including its borders using winding number algorithm. The polygon can be of any shape. If the polygon is a convex, it is better to use **InsideConvex** method. 
 
 ### TestSection extension method
 
