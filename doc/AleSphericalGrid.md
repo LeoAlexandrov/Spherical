@@ -2,11 +2,11 @@
 
 The sphere triangular grid is a recursive decomposition of a sphere surface to spherical triangles (tiles) almost uniformly covering it everywhere including poles, unlike the coordinate grid. At zero level, the sphere is decomposed to 8 tiles (faces of a octahedron inscribed into the sphere), 3 bits required to index them. 
 
-![Octahedron inside sphere](http://www.aleprojects.com/upload/images/octahedron-inside-sphere.png)
+![Octahedron inside sphere](https://aleprojects.com/upload/images/octahedron-inside-sphere.png)
 
 On every next step (level), each tile is splitted to 4 smaller tiles, 2 bits required to index them. 
 
-![Sphere triangle tile](http://www.aleprojects.com/upload/images/sphere-triangle.png)
+![Sphere triangle tile](https://aleprojects.com/upload/images/sphere-triangle.png)
 
 64-bit integer can address a sphere tile of up to 30 level. Such key can be assigned to sphere objects and will allow to retrieve them from a database or hash-table very quickly. 
 
@@ -32,7 +32,7 @@ Example
 
 This is the visualization of tiles at the 14th level covering the circle with the center in (43.60943, 1.440064) and radius of 2000 m. 
 
-![Tiles covering a circle](http://www.aleprojects.com/upload/images/tiles-circle.jpg)
+![Tiles covering a circle](https://aleprojects.com/upload/images/tiles-circle.jpg)
 
 Suppose we have some database table:
     
@@ -112,11 +112,11 @@ Pictures below demonstrates coverage of circles with 4000m and 1000m radius and 
     
     List<SphereGridTiles> tiles = SphereGridTile.CoverCircleByTiles(location, angle, level, joinTiles);
 
-![Tiles covering a circle](http://www.aleprojects.com/upload/images/circle-to-triangle-4.jpg)
+![Tiles covering a circle](https://aleprojects.com/upload/images/circle-to-triangle-4.jpg)
 
 4000 m and 1000 m circles with 4 circle-to-triangle ratio.
 
-![Tiles covering a circle](http://www.aleprojects.com/upload/images/circle-to-triangle-64.jpg)
+![Tiles covering a circle](https://aleprojects.com/upload/images/circle-to-triangle-64.jpg)
 
 4000 m and 1000 m circles with 64 circle-to-triangle ratio.
 
