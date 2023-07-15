@@ -405,7 +405,7 @@ namespace AleProjects.Spherical
 		/// Creates a new geocoordinate as a copy of the given location.
 		/// </summary>
 		/// <param name="location">Geocoordinate whose Latitude and Longitude used for a new geocoordinate.</param>
-		public GeoCoordinate(in IGeoCoordinate location) : base(location.Lat, location.Lon, false)
+		public GeoCoordinate(IGeoCoordinate location) : base(location.Lat, location.Lon, false)
 		{
 			_Lat = location.Lat;
 			_Lon = location.Lon;
@@ -415,7 +415,7 @@ namespace AleProjects.Spherical
 		/// Creates a new geocoordinate from the vector.
 		/// </summary>
 		/// <param name="cartesian">The vector whose Dec and Ra used as Latitude and Longitude for a new geocoordinate.</param>
-		public GeoCoordinate(in ICartesian cartesian)
+		public GeoCoordinate(ICartesian cartesian)
 		{
 			var (x, y, z) = SphericalExtension._Normalized(cartesian.X, cartesian.Y, cartesian.Z);
 
@@ -870,7 +870,7 @@ namespace AleProjects.Spherical
 			return NewCartesian<T>(x, y, z);
 		}
 
-		public static T CrossProduct<T>(this ICartesian cartesian, in CartesianStruct V, bool normalize) where T : ICartesian, new()
+		public static T CrossProduct<T>(this ICartesian cartesian, CartesianStruct V, bool normalize) where T : ICartesian, new()
 		{
 			var (x, y, z) = _CrossProduct(cartesian.X, cartesian.Y, cartesian.Z, V.X, V.Y, V.Z, normalize);
 
@@ -2146,18 +2146,24 @@ namespace AleProjects.Spherical
 		public static bool WithinBounds(double lat, double lon, IGeoCoordinate SW, IGeoCoordinate NE, double tolerance)
 		{
 			double toleranceRad = Math.Abs(tolerance) / EARTH_MEAN_RADIUS;
-
 			double nLat = NE.Lat + toleranceRad;
-			if (nLat > Math.PI / 2.0) nLat = Math.PI / 2.0;
 
-			if (lat > nLat) return false;
+			if (nLat > Math.PI / 2.0) 
+				nLat = Math.PI / 2.0;
+
+			if (lat > nLat) 
+				return false;
 
 			double sLat = SW.Lat - toleranceRad;
-			if (sLat < -Math.PI / 2.0) sLat = -Math.PI / 2.0;
 
-			if (lat < sLat) return false;
+			if (sLat < -Math.PI / 2.0) 
+				sLat = -Math.PI / 2.0;
 
-			if (NE.Lon - SW.Lon >= 2.0 * Math.PI - 2.0 * toleranceRad) return true;
+			if (lat < sLat) 
+				return false;
+
+			if (NE.Lon - SW.Lon >= 2.0 * Math.PI - 2.0 * toleranceRad) 
+				return true;
 
 			double eLon = (NE.Lon + toleranceRad).ToLongitudeRange();
 			double wLon = (SW.Lon - toleranceRad).ToLongitudeRange();
@@ -2200,7 +2206,8 @@ namespace AleProjects.Spherical
 
 				res = ((long)tileX << 32) + tileY;
 
-				if (res < 0) throw new InvalidOperationException();
+				if (res < 0) 
+					throw new InvalidOperationException();
 			}
 			else res = -1;
 
@@ -2249,8 +2256,8 @@ namespace AleProjects.Spherical
 		/// <returns>Heading within [0..360) range.</returns>
 		public static double To360Range(this double heading)
 		{
-			if (heading >= 360.0 ||
-				heading < 0) heading -= Math.Floor(heading / 360.0) * 360.0;
+			if (heading >= 360.0 || heading < 0.0) 
+				heading -= Math.Floor(heading / 360.0) * 360.0;
 
 			return heading;
 		}
@@ -2262,8 +2269,8 @@ namespace AleProjects.Spherical
 		/// <returns>Heading in the [0..2π) range.</returns>
 		public static double To2PIRange(this double heading)
 		{
-			if (heading >= 2.0 * Math.PI ||
-				heading < 0) heading -= Math.Floor(heading / (2.0 * Math.PI)) * 2.0 * Math.PI;
+			if (heading >= 2.0 * Math.PI || heading < 0.0) 
+				heading -= Math.Floor(heading / (2.0 * Math.PI)) * 2.0 * Math.PI;
 
 			return heading;
 		}
@@ -2276,8 +2283,8 @@ namespace AleProjects.Spherical
 		/// <returns>Longitude in the [-π..π] range.</returns>
 		public static double ToLongitudeRange(this double lon)
 		{
-			if (lon > Math.PI ||
-				lon < -Math.PI) lon -= Math.Floor((lon + Math.PI) / (2.0 * Math.PI)) * 2.0 * Math.PI;
+			if (lon > Math.PI || lon < -Math.PI) 
+				lon -= Math.Floor((lon + Math.PI) / (2.0 * Math.PI)) * 2.0 * Math.PI;
 
 			return lon;
 		}
@@ -2290,8 +2297,8 @@ namespace AleProjects.Spherical
 		/// <returns>Longitude in the [-180..180] range.</returns>
 		public static double ToLongitudeRangeDegrees(this double longitude)
 		{
-			if (longitude > 180.0 ||
-				longitude < -180.0) longitude -= Math.Floor((longitude + 180.0) / (2.0 * 180.0)) * 2.0 * 180.0;
+			if (longitude > 180.0 || longitude < -180.0) 
+				longitude -= Math.Floor((longitude + 180.0) / (2.0 * 180.0)) * 2.0 * 180.0;
 
 			return longitude;
 		}
@@ -2341,9 +2348,14 @@ namespace AleProjects.Spherical
 		public static double OppositeHeading(this double heading, bool degrees = false)
 		{
 			if (degrees)
-				if ((heading = heading.To360Range()) < 180.0) heading += 180.0; else heading -= 180.0;
-			else
-				if ((heading = heading.To2PIRange()) < Math.PI) heading += Math.PI; else heading -= Math.PI;
+				if ((heading = heading.To360Range()) < 180.0) 
+					heading += 180.0; 
+				else 
+					heading -= 180.0;
+			else if ((heading = heading.To2PIRange()) < Math.PI) 
+				heading += Math.PI; 
+			else 
+				heading -= Math.PI;
 
 			return heading;
 		}
@@ -2361,13 +2373,17 @@ namespace AleProjects.Spherical
 
 			if (degrees)
 			{
-				if (otherHeading > 180.0) otherHeading -= 360.0;
-				else if (otherHeading < -180.0) otherHeading += 360.0;
+				if (otherHeading > 180.0) 
+					otherHeading -= 360.0;
+				else if (otherHeading < -180.0) 
+					otherHeading += 360.0;
 			}
 			else
 			{
-				if (otherHeading > Math.PI) otherHeading -= 2 * Math.PI;
-				else if (otherHeading < -Math.PI) otherHeading += 2 * Math.PI;
+				if (otherHeading > Math.PI) 
+					otherHeading -= 2 * Math.PI;
+				else if (otherHeading < -Math.PI) 
+					otherHeading += 2 * Math.PI;
 			}
 
 			return otherHeading;
@@ -2386,13 +2402,17 @@ namespace AleProjects.Spherical
 
 			if (degrees)
 			{
-				if (otherHeading > 180.0f) otherHeading -= 360.0f;
-				else if (otherHeading < -180.0f) otherHeading += 360.0f;
+				if (otherHeading > 180.0f) 
+					otherHeading -= 360.0f;
+				else if (otherHeading < -180.0f) 
+					otherHeading += 360.0f;
 			}
 			else
 			{
-				if (otherHeading > Math.PI) otherHeading -= (float)(2.0 * Math.PI);
-				else if (otherHeading < -Math.PI) otherHeading += (float)(2.0 * Math.PI);
+				if (otherHeading > Math.PI) 
+					otherHeading -= (float)(2.0 * Math.PI);
+				else if (otherHeading < -Math.PI) 
+					otherHeading += (float)(2.0 * Math.PI);
 			}
 
 			return otherHeading;
@@ -2544,7 +2564,8 @@ namespace AleProjects.Spherical
 			int diff = (int)(location.Lat * 100000.0 * 180.0 / Math.PI) - lastLat;
 			int shifted = diff << 1;
 
-			if (diff < 0) shifted = ~shifted;
+			if (diff < 0) 
+				shifted = ~shifted;
 
 			int rem = shifted;
 
@@ -2552,14 +2573,18 @@ namespace AleProjects.Spherical
 			{
 				c = (char)((0x20 | (rem & 0x1f)) + 63);
 				result.Append(c);
-				if (c == '\\' && escape) result.Append('\\');
+
+				if (c == '\\' && escape) 
+					result.Append('\\');
 
 				rem >>= 5;
 			}
 
 			c = (char)(rem + 63);
 			result.Append(c);
-			if (c == '\\' && escape) result.Append('\\');
+
+			if (c == '\\' && escape) 
+				result.Append('\\');
 
 			diff = (int)(location.Lon * 100000.0 * 180.0 / Math.PI) - lastLon;
 			shifted = diff << 1;
@@ -2572,14 +2597,18 @@ namespace AleProjects.Spherical
 			{
 				c = (char)((0x20 | (rem & 0x1f)) + 63);
 				result.Append(c);
-				if (c == '\\' && escape) result.Append('\\');
+
+				if (c == '\\' && escape) 
+					result.Append('\\');
 
 				rem >>= 5;
 			}
 
 			c = (char)(rem + 63);
 			result.Append(c);
-			if (c == '\\' && escape) result.Append('\\');
+
+			if (c == '\\' && escape) 
+				result.Append('\\');
 
 			return result.ToString();
 		}
@@ -2721,14 +2750,18 @@ namespace AleProjects.Spherical
 			double delta = Math.Asin(Math.Sin(obl) * Math.Sin(lambda));
 			double cosc = (Math.Sin(elevation * Math.PI / 180.0) - Math.Sin(location.Lat) * Math.Sin(delta)) / (Math.Cos(location.Lat) * Math.Cos(delta));
 
-			if (cosc > 1.0) return DateTime.MaxValue; // never rises 
-			if (cosc < -1.0) return DateTime.MinValue; // never sets
+			if (cosc > 1.0) 
+				return DateTime.MaxValue; // never rises 
+			
+			if (cosc < -1.0) 
+				return DateTime.MinValue; // never sets
 
 			double correction = Math.Acos(cosc);
 			double utnew = Math.PI - (GHA + location.Lon + correction);
 			double eventUT = utnew * 57.29577951 / 15.0;
 
-			if (eventUT >= 24.0) eventUT %= 24.0;
+			if (eventUT >= 24.0) 
+				eventUT %= 24.0;
 
 			DateTime result = new DateTime(date.Year, date.Month, date.Day);
 			return result.Add(date.Offset).AddHours(eventUT);
@@ -2755,14 +2788,18 @@ namespace AleProjects.Spherical
 			double delta = Math.Asin(Math.Sin(obl) * Math.Sin(lambda));
 			double cosc = (Math.Sin(elevation * Math.PI / 180.0) - Math.Sin(location.Lat) * Math.Sin(delta)) / (Math.Cos(location.Lat) * Math.Cos(delta));  // B25
 
-			if (cosc > 1.0) return DateTime.MaxValue; // never rises 
-			if (cosc < -1.0) return DateTime.MinValue; // never sets
+			if (cosc > 1.0) 
+				return DateTime.MaxValue; // never rises 
+
+			if (cosc < -1.0) 
+				return DateTime.MinValue; // never sets
 
 			double correction = Math.Acos(cosc);
 			double utnew = Math.PI - (GHA + location.Lon - correction);
 			double eventUT = utnew * 57.29577951 / 15.0;
 
-			if (eventUT >= 24.0) eventUT %= 24.0;
+			if (eventUT >= 24.0) 
+				eventUT %= 24.0;
 
 			DateTime result = new DateTime(date.Year, date.Month, date.Day);
 			return result.Add(date.Offset).AddHours(eventUT);
@@ -2786,8 +2823,12 @@ namespace AleProjects.Spherical
 			if (location != null)
 			{
 				sunrise = location.Sunrise(date);
-				if (sunrise == DateTime.MaxValue) return (DateTime.MaxValue, DateTime.MinValue); // never rises
-				if (sunrise == DateTime.MinValue) return (DateTime.MinValue, DateTime.MaxValue); // never sets
+
+				if (sunrise == DateTime.MaxValue) 
+					return (DateTime.MaxValue, DateTime.MinValue); // never rises
+				
+				if (sunrise == DateTime.MinValue) 
+					return (DateTime.MinValue, DateTime.MaxValue); // never sets
 
 				sunset = location.Sunset(date);
 
