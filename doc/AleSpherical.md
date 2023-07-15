@@ -48,27 +48,8 @@ I'll not focus on such methods like DotProduct, CrossProduct, Angle, DistanceTo,
 
 ### InsideTriangle extension method
 	public static bool InsideTriangle(this ICartesian cartesian, ICartesian vertex1, ICartesian vertex2, ICartesian vertex3)
-	public static bool InsideTriangle(this ICartesian cartesian, double x1, double y1, double z1, double x2, double y2, double z2, double x3, double y3, double z3)
 
-This method checks if the vector **cartesian** is inside the spherical triangle with the **vertex1**, **vertex2**, **vertex3** vertices. Or with the vertices given by (x1,y1,z1), (x2,y2,z2), (x3,y3,z3). The method calculates triple products of the **cartesian** with each pair of vectors. The first criterion is that all results are of one sign. If the vector is inside, an opposite vector will produce triple products of one sign too. So, the second criterion is a plane formed by the triangle vertices ends and moved to the coordinate origin. End of the  **cartesian** vector must be on the one side with any of the vertices relative to this plane. This method is a cornerstone of the sphere triangular grid.
-
-### PolygonInfo method
-    public static double[] PolygonInfo(IEnumerable<ICartesian> polygon)
-
-Returns an array of angles between planes formed by vertices of a polygon. Any negative angle in the returned array indicates that the polygon is not a convex.
-Example:
-
-    string line = "svx}FhefvOa_HfsDykA~zKleIv_C`_Bo`Ggr@}wFhrCglA|kBlyNalJhvIkeJquEwkAqcLbrA{bHbrDy{D";
-    var polygon = SphericalExtension.DecodeGooglePolyline<GeoCoordinate>(line);
-    var info = SphericalExtension.PolygonInfo(polygon);
-
-![Polygon vertices and angles](https://aleprojects.com/upload/images/polygon-info.png)
-
-For this polygon **PolygonInfo** will return the following array:
-
-![Test section](https://aleprojects.com/upload/images/polygon-info-values.png)
-
-Vertices from 1 to 4 make this polygon not a convex. *This does not mean that if to remove these vertices, the polygon will become a convex*. If some value of this array is zero, this means that 3 points are on one geodesical line and the middle one can be safely removed. 
+This method checks if the vector **cartesian** is inside the spherical triangle with the **vertex1**, **vertex2**, **vertex3** vertices. The method calculates triple products of the **cartesian** with each pair of vectors. The first criterion is that all results are of one sign. If the vector is inside, an opposite vector will produce triple products of one sign too. So, the second criterion is an angle between **cartesian** and sum of triangle vertices, it must be greater than π/2. This method is a cornerstone of the sphere triangular grid.
 
 ### InflateConvex method
 
@@ -85,10 +66,10 @@ The idea behind calculations is to rotate planes formed by vertices vectors to a
 
 ### SectionsIntersect method
 
-	public static int SectionsIntersect(ICartesian vertex1S1, ICartesian vertex2S1, ICartesian vertex1S2, ICartesian vertex2S2)
-	public static int SectionsIntersect(ICartesian vertex1S1, ICartesian vertex2S1, ICartesian vertex1S2, ICartesian vertex2S2, double tolerance)
+	public static int SectionsIntersect(ICartesian V1S1, ICartesian V2S1, ICartesian V1S2, ICartesian V2S2)
+	public static int SectionsIntersect(ICartesian V1S1, ICartesian V2S1, ICartesian V1S2, ICartesian V2S2, double tolerance)
 
-This method checks that two sections (geodesical lines) on a sphere intersect. First, this method takes a plane formed by **vertex1S1** and **vertex2S1** and checks positions of **vertex1S2** and **vertex2S2** relative to the plane. Then the same with a plane by **vertex1S2** and **vertex2S2** and the positions of **vertex1S1** and **vertex2S1**. The method returns a negative number if the sections don't intersect, positive if intersect, zero if some section end belongs to another section. Overloaded method with **tolerance** parameter tests if the sections are close enough to each other to consider them intersecting. Tolerance is an angle in radians at the coordinates origin, real distance on the surface is tolerance\*sphere_radius.
+This method checks that two sections (geodesical lines) on a sphere intersect. First, this method takes a plane formed by vertices **V1S1** and **V2S1** and checks positions of vertices **V1S2** and **V2S2** relative to the plane. Then the same with the plane formed by **V1S2** and **V2S2** and the positions of **V1S1** and **V2S1**. The method returns a negative number if the sections don't intersect, positive if intersect, zero if some section end belongs to another section. Overloaded method with **tolerance** parameter tests if the sections are close enough to each other to consider them intersecting. Tolerance is an angle in radians at the coordinates origin, real distance on the surface is tolerance\*sphere_radius.
 
 ### InsidePolygon extension method
 
@@ -98,18 +79,18 @@ This method checks if a vector **cartesian** is inside a polygon including its b
 
 ### TestSection extension method
 
-	public static double TestSection(this ICartesian cartesian, ICartesian vertex1, ICartesian vertex2)
+	public static double TestSection(this ICartesian cartesian, ICartesian V1, ICartesian V2)
 
-This method checks if a vector **cartesian** is between two vectors **vertex1** and **vertex2**. First, it builds a plane using **vertex1** and **vertex2**. Then it takes an angle between the vector **cartesian** and this plane and corrects it with PI/2 angle. The method returns this angle, its positive value indicates that **cartesian** is between the vectors, negative if not. The next step is to build another plane containing **cartesian** and perpendicular to the plane obtained in the first step. Finally, it checks positions of **vertex1** and **vertex2** relative to this plane. If they are on the opposite sides, the result is positive.
+This method checks if a vector **cartesian** is between two vectors **V1** and **V2**. First, it builds a plane using **V1** and **V2**. Then it takes an angle between the vector **cartesian** and this plane and corrects it with π/2 angle. The method returns this angle, its positive value indicates that **cartesian** is between the vectors, negative if not. The next step is to build another plane containing **cartesian** and perpendicular to the plane obtained in the first step. Finally, it checks positions of **V1** and **V2** relative to this plane. If they are on the opposite sides, the result is positive.
 
 ![Test section](https://aleprojects.com/upload/images/test_section.jpg)
 
-This drawing demonstrates **TestSection** method. If to call C.TestSection(V1,V2) with C,V1,V2 as they drawn, it will return positive alpha angle indicating success. Alpha\*sphere_radius is a distance from the point C to the arc on the sphere. If C is out of the arc, method will return negative value of the angle.
+This drawing demonstrates **TestSection** method. If to call C.TestSection(V1,V2) with C,V1,V2 as they drawn, it will return positive alpha angle indicating success. Alpha\*sphere_radius is a distance from the point C to the arc on the sphere. If C is out of the arc V1V2, method will return negative value of the angle.
 
 ### TestPolyline extension method
 
-	public static int TestPolyline(this ICartesian cartesian, IEnumerable<ICartesian> polyline, double tolerance, bool reverse, Func<ICartesian, ICartesian, ICartesian, double, double, bool> userTest, out double angleFromPolyline)
-	public static PolylineTestResult TestPolyline(this ICartesian cartesian, IEnumerable<ICartesian> polyline, double tolerance, bool reverse, Func<ICartesian, ICartesian, ICartesian, double, double, bool> userTest, PolylineTestResult result)
+	public static int TestPolyline(this ICartesian cartesian, IEnumerable<ICartesian> polyline, double tolerance, bool reverse, PolylineSectionTest userTest, out double angleFromPolyline)
+	public static PolylineTestResult TestPolyline(this ICartesian cartesian, IEnumerable<ICartesian> polyline, double tolerance, bool reverse, PolylineSectionTest userTest, PolylineTestResult result)
 
 This method works in a similar way as **TestSection**. It applies **TestSection** to all sections of the polyline with some additional checks. First additional check is how far from the polyline the point can stand. The **tolerance** parameter is an angle in radians at the coordinates origin, it represents maximum distance as tolerance\*sphere_radius. Second optional check is the **userTest** delegate, if it is not null.  If the task is only to check the position of a point relative to a polyline, no need to use delegate. If the task is to guide moving point along directional route polyline, then the delegate is required.
 
@@ -123,7 +104,7 @@ Example:
 	double speed = 40; // units don't matter in this example, let it be mph.
 	double tolerance = 30; // 30 meters
 	
-	Func<ICartesian, ICartesian, ICartesian, double, double, bool> geometryTest = (v0, v1, v2, angle, azimuth) =>
+	PolylineSectionTest geometryTest = (v0, v1, v2, angle, azimuth) =>
 	{
 		// the higher speed, the less fluctuations of a heading calculated from GPS data. 
 		double diff = speed < 10.0 ? Math.PI / 4.0 : Math.PI / 10.0;
