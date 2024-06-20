@@ -108,7 +108,7 @@ namespace AleProjects.Spherical.Grid
 		public static long BuildQuadKey(double lat, double lon, int level)
 		{
 			if (level < 0 || level > ABSOLUTE_MAX_LEVEL)
-				throw new ArgumentException();
+				throw new ArgumentOutOfRangeException(nameof(level));
 
 			var (x, y, z) = SphericalExtension.SphericalToCartesian(lat, lon);
 
@@ -234,7 +234,7 @@ namespace AleProjects.Spherical.Grid
 		/// Returns grid level where square of a tile relates to square of a circle in given ratio (approximately).  
 		/// </summary>
 		/// <param name="angle">Represents the circle radius.</param>
-		/// <param name="triangleToCircleRatio">Tile to circle ratio.</param>
+		/// <param name="circleToTriangleRatio">Tile to circle ratio.</param>
 		/// <returns>Grid level.</returns>
 		public static int LevelForCircleToTriangleRatio(double angle, double circleToTriangleRatio)
 		{
@@ -363,8 +363,11 @@ namespace AleProjects.Spherical.Grid
 		/// <param name="level">Grid level.</param>
 		public SphereGridTile(ICartesian location, int level)
 		{
-			if (location == null || level < 0 || level > SphereGridHelper.ABSOLUTE_MAX_LEVEL)
-				throw new ArgumentException();
+			if (location == null)
+				throw new ArgumentNullException(nameof(location));
+
+			if (level < 0 || level > SphereGridHelper.ABSOLUTE_MAX_LEVEL)
+				throw new ArgumentOutOfRangeException(nameof(level));
 
 			int k = SphereGridHelper.FindPrimaryTile(location);
 			long quadkey = (long)k << (64 - 1 - 3); // 1 - sign, 3 - bits for 0..7 values
@@ -412,9 +415,11 @@ namespace AleProjects.Spherical.Grid
 		/// <param name="level">Grid level.</param>
 		public SphereGridTile(long quadKey, int level)
 		{
-			if (quadKey < 0 || level < 0 || level > SphereGridHelper.ABSOLUTE_MAX_LEVEL)
-				throw new ArgumentException();
+			if (quadKey < 0)
+				throw new ArgumentOutOfRangeException(nameof(quadKey));
 
+			if (level < 0 || level > SphereGridHelper.ABSOLUTE_MAX_LEVEL)
+				throw new ArgumentOutOfRangeException(nameof(level));
 
 			if (level > 0)
 			{
@@ -631,16 +636,18 @@ namespace AleProjects.Spherical.Grid
 		public bool CoveredByCircle(ICartesian center, double angle)
 		{
 			double circleCosine = Math.Cos(angle);
-			double phi;
 
 			// any vertex inside circle or circle center inside triangle
 
 			if (SphericalExtension._Cosine(center.X, center.Y, center.Z, Vertex1.X, Vertex1.Y, Vertex1.Z) > circleCosine ||
 				SphericalExtension._Cosine(center.X, center.Y, center.Z, Vertex2.X, Vertex2.Y, Vertex2.Z) > circleCosine ||
 				SphericalExtension._Cosine(center.X, center.Y, center.Z, Vertex3.X, Vertex3.Y, Vertex3.Z) > circleCosine ||
-				SphericalExtension._InsideTriangle(center.X, center.Y, center.Z, Vertex1, Vertex2, Vertex3)) return true;
+				SphericalExtension._InsideTriangle(center.X, center.Y, center.Z, Vertex1, Vertex2, Vertex3)) 
+				return true;
 
 			// check side Vertex1-Vertex2
+
+			double phi;
 
 			var (vx, vy, vz) = SphericalExtension._CrossProduct(Vertex1.X, Vertex1.Y, Vertex1.Z, Vertex2.X, Vertex2.Y, Vertex2.Z, false);
 			var (cx, cy, cz) = SphericalExtension._CrossProduct(center.X, center.Y, center.Z, vx, vy, vz, false);
@@ -649,8 +656,12 @@ namespace AleProjects.Spherical.Grid
 				SphericalExtension._DotProduct(cx, cy, cz, Vertex2.X, Vertex2.Y, Vertex2.Z) < 0.0)
 			{
 				phi = Math.Acos(SphericalExtension._Cosine(vx, vy, vz, center.X, center.Y, center.Z));
-				if (phi > Math.PI / 2) phi = Math.PI - phi;
-				if (angle + phi > Math.PI / 2) return true;
+				
+				if (phi > Math.PI / 2) 
+					phi = Math.PI - phi;
+				
+				if (angle + phi > Math.PI / 2) 
+					return true;
 			}
 
 			// check side Vertex2-Vertex3
@@ -662,8 +673,12 @@ namespace AleProjects.Spherical.Grid
 				SphericalExtension._DotProduct(cx, cy, cz, Vertex3.X, Vertex3.Y, Vertex3.Z) < 0.0)
 			{
 				phi = Math.Acos(SphericalExtension._Cosine(vx, vy, vz, center.X, center.Y, center.Z));
-				if (phi > Math.PI / 2) phi = Math.PI - phi;
-				if (angle + phi > Math.PI / 2) return true;
+
+				if (phi > Math.PI / 2) 
+					phi = Math.PI - phi;
+				
+				if (angle + phi > Math.PI / 2) 
+					return true;
 			}
 
 			// check side Vertex3-Vertex1
@@ -675,8 +690,12 @@ namespace AleProjects.Spherical.Grid
 				SphericalExtension._DotProduct(cx, cy, cz, Vertex1.X, Vertex1.Y, Vertex1.Z) < 0.0)
 			{
 				phi = Math.Acos(SphericalExtension._Cosine(vx, vy, vz, center.X, center.Y, center.Z));
-				if (phi > Math.PI / 2) phi = Math.PI - phi;
-				if (angle + phi > Math.PI / 2) return true;
+
+				if (phi > Math.PI / 2) 
+					phi = Math.PI - phi;
+				
+				if (angle + phi > Math.PI / 2) 
+					return true;
 			}
 
 			return false;
@@ -751,19 +770,30 @@ namespace AleProjects.Spherical.Grid
 
 			var (vx, vy, vz) = SphericalExtension._CrossProduct(Vertex1.X, Vertex1.Y, Vertex1.Z, Vertex2.X, Vertex2.Y, Vertex2.Z, false);
 			double phi = Math.Acos(SphericalExtension._Cosine(vx, vy, vz, center.X, center.Y, center.Z));
-			if (phi > Math.PI / 2) phi = Math.PI - phi;
-			if (angle + phi > Math.PI / 2) return false;
+			
+			if (phi > Math.PI / 2) 
+				phi = Math.PI - phi;
+			
+			if (angle + phi > Math.PI / 2) 
+				return false;
 
 			// check side Vertex2-Vertex3
 			(vx, vy, vz) = SphericalExtension._CrossProduct(Vertex2.X, Vertex2.Y, Vertex2.Z, Vertex3.X, Vertex3.Y, Vertex3.Z, false);
 			phi = Math.Acos(SphericalExtension._Cosine(vx, vy, vz, center.X, center.Y, center.Z));
-			if (phi > Math.PI / 2) phi = Math.PI - phi;
-			if (angle + phi > Math.PI / 2) return false;
+
+			if (phi > Math.PI / 2) 
+				phi = Math.PI - phi;
+
+			if (angle + phi > Math.PI / 2) 
+				return false;
 
 			// check side Vertex3-Vertex1
 			(vx, vy, vz) = SphericalExtension._CrossProduct(Vertex3.X, Vertex3.Y, Vertex3.Z, Vertex1.X, Vertex1.Y, Vertex1.Z, false);
 			phi = Math.Acos(SphericalExtension._Cosine(vx, vy, vz, center.X, center.Y, center.Z));
-			if (phi > Math.PI / 2) phi = Math.PI - phi;
+
+			if (phi > Math.PI / 2) 
+				phi = Math.PI - phi;
+
 			return angle + phi <= Math.PI / 2; // <= because 'false' above
 		}
 
@@ -831,7 +861,7 @@ namespace AleProjects.Spherical.Grid
 		public static List<SphereGridTile> CoverCircleByTiles(ICartesian center, double angle, int level, bool join)
 		{
 			if (level < 0 || level > SphereGridHelper.ABSOLUTE_MAX_LEVEL) 
-				throw new ArgumentException();
+				throw new ArgumentOutOfRangeException(nameof(level));
 
 			SphereGridTile tile = new SphereGridTile(center, 0);
 			SphereGridTile t;
@@ -878,8 +908,8 @@ namespace AleProjects.Spherical.Grid
 		/// <returns>List of tiles covering the polyline.</returns>
 		public static List<SphereGridTile> CoverPolylineByTiles(IEnumerable<ICartesian> polyline, int level, double tolerance, bool join)
 		{
-			if (level < 0 || level > SphereGridHelper.ABSOLUTE_MAX_LEVEL) 
-				throw new ArgumentException();
+			if (level < 0 || level > SphereGridHelper.ABSOLUTE_MAX_LEVEL)
+				throw new ArgumentOutOfRangeException(nameof(level));
 
 			SphereGridTile tile = new SphereGridTile(polyline.First(), 0);
 			SphereGridTile t;
@@ -925,8 +955,8 @@ namespace AleProjects.Spherical.Grid
 		/// <returns>List of tiles covering the polygon.</returns>
 		public static List<SphereGridTile> CoverPolygonByTiles(IEnumerable<ICartesian> polygon, int level, bool join)
 		{
-			if (level < 0 || level > SphereGridHelper.ABSOLUTE_MAX_LEVEL) 
-				throw new ArgumentException();
+			if (level < 0 || level > SphereGridHelper.ABSOLUTE_MAX_LEVEL)
+				throw new ArgumentOutOfRangeException(nameof(level));
 
 			SphereGridTile tile = new SphereGridTile(polygon.First(), 0);
 			SphereGridTile t;
@@ -994,9 +1024,7 @@ namespace AleProjects.Spherical.Grid
 			StringBuilder result = new StringBuilder(keys[0].ToString(), 128);
 
 			for (int i = 1; i <= SphereGridHelper.ABSOLUTE_MAX_LEVEL; i++)
-				result
-					.Append(",")
-					.Append(keys[i]);
+				result.Append(',').Append(keys[i]);
 
 			return result.ToString();
 		}

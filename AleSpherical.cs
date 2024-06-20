@@ -445,8 +445,8 @@ namespace AleProjects.Spherical
 		/// <summary>
 		/// Sets latitude and longitude given in radians for the coordinate.
 		/// </summary>
-		/// <param name="dec">Latitude in radians.</param>
-		/// <param name="ra">Longitude in radians.</param>
+		/// <param name="lat">Latitude in radians.</param>
+		/// <param name="lon">Longitude in radians.</param>
 		public override void SetSpherical(double lat, double lon)
 		{
 			base.SetSpherical(lat, lon);
@@ -578,6 +578,7 @@ namespace AleProjects.Spherical
 	/// </summary>
 	public static class SphericalExtension
 	{
+		public const double EPSILON = 2.2204460492503131e-016;
 		public const double EARTH_MEAN_RADIUS = 6371000;
 
 		private const string Error_Message_Not_Polygon = "Parameter is not a polygon.";
@@ -935,7 +936,9 @@ namespace AleProjects.Spherical
 		/// <typeparam name="T">Type T must implement the ICartesian interface.</typeparam>
 		/// <param name="cartesian">Vector to rotate.</param>
 		/// <param name="angle">Rotation angle.</param>
-		/// <param name="axis">Rotation axis.</param>
+		/// <param name="axisX">Rotation axis X.</param>
+		/// <param name="axisY">Rotation axis Y.</param>
+		/// <param name="axisZ">Rotation axis Z.</param>
 		/// <returns>New vector obtained from rotation.</returns>
 		public static T Rotate<T>(this ICartesian cartesian, double angle, double axisX, double axisY, double axisZ) where T : ICartesian, new()
 		{
@@ -996,12 +999,12 @@ namespace AleProjects.Spherical
 			double dec = cartesian.Dec();
 			double ra = cartesian.Ra();
 
-			if (Math.Abs(dec) <= double.Epsilon)
+			if (Math.Abs(dec) <= EPSILON)
 			{
 				var (x, y, z) = SphericalToCartesian(azimuthOnSphere, ra - Math.PI / 2.0);
 				result = NewCartesian<T>(x, y, z);
 			}
-			else if (Math.Abs(Math.PI / 2 - Math.Abs(dec)) <= double.Epsilon)
+			else if (Math.Abs(Math.PI / 2 - Math.Abs(dec)) <= EPSILON)
 				result = default;
 			else
 				result = cartesian.CrossProduct<T>(0.0, ra - Math.Atan(Math.Sin(dec) * Math.Tan(azimuthOnSphere)));
@@ -1021,9 +1024,9 @@ namespace AleProjects.Spherical
 		/// Extension method testing whether a vector belongs to a triangle formed by three vectors. 
 		/// </summary>
 		/// <param name="cartesian">Vector to test.</param>
-		/// <param name="vertex1">First vertex of the triangle.</param>
-		/// <param name="vertex2">Second vertex of the triangle.</param>
-		/// <param name="vertex3">Third vertex of the triangle.</param>
+		/// <param name="V1">First vertex of the triangle.</param>
+		/// <param name="V2">Second vertex of the triangle.</param>
+		/// <param name="V3">Third vertex of the triangle.</param>
 		/// <returns>True if the vector belongs to the triangle.</returns>
 		public static bool InsideTriangle(this ICartesian cartesian, ICartesian V1, ICartesian V2, ICartesian V3)
 		{
@@ -1034,7 +1037,7 @@ namespace AleProjects.Spherical
 		/// Extension method testing if a vector is inside a convex including its borders.
 		/// </summary>
 		/// <param name="cartesian">Vector to test.</param>
-		/// <param name="vertices">Vertices of the convex.</param>
+		/// <param name="polygon">Vertices of the convex.</param>
 		/// <returns>True if inside.</returns>
 		public static bool InsideConvex(this ICartesian cartesian, IEnumerable<ICartesian> polygon)
 		{
@@ -1077,7 +1080,7 @@ namespace AleProjects.Spherical
 
 			var (Nx, Ny, Nz) = _CrossProduct(cartesian.X, cartesian.Y, cartesian.Z, previous.X, previous.Y, previous.Z, false);
 
-			if (Math.Abs(Nx) <= double.Epsilon && Math.Abs(Ny) <= double.Epsilon && Math.Abs(Nz) <= double.Epsilon)
+			if (Math.Abs(Nx) <= EPSILON && Math.Abs(Ny) <= EPSILON && Math.Abs(Nz) <= EPSILON)
 				return true;
 
 			double wn = 0.0;
@@ -1086,7 +1089,7 @@ namespace AleProjects.Spherical
 			{
 				var (N1x, N1y, N1z) = _CrossProduct(cartesian.X, cartesian.Y, cartesian.Z, current.X, current.Y, current.Z, false);
 
-				if (Math.Abs(N1x) <= double.Epsilon && Math.Abs(N1y) <= double.Epsilon && Math.Abs(N1z) <= double.Epsilon)
+				if (Math.Abs(N1x) <= EPSILON && Math.Abs(N1y) <= EPSILON && Math.Abs(N1z) <= EPSILON)
 					return true;
 
 				if (_TripleProduct(cartesian.X, cartesian.Y, cartesian.Z, previous.X, previous.Y, previous.Z, current.X, current.Y, current.Z) > 0.0)
@@ -1158,7 +1161,7 @@ namespace AleProjects.Spherical
 			{
 				x = _TripleProduct(previous.X, previous.Y, previous.Z, current.X, current.Y, current.Z, next.X, next.Y, next.Z);
 
-				if (Math.Abs(x) <= double.Epsilon) 
+				if (Math.Abs(x) <= EPSILON) 
 					throw new ArgumentException(Error_Message_Not_Convex, nameof(polygon));
 
 				if (!cw.HasValue) 
@@ -1172,7 +1175,7 @@ namespace AleProjects.Spherical
 
 			x = _TripleProduct(previous.X, previous.Y, previous.Z, current.X, current.Y, current.Z, first.X, first.Y, first.Z);
 
-			if (Math.Abs(x) <= double.Epsilon)
+			if (Math.Abs(x) <= EPSILON)
 				throw new ArgumentException(Error_Message_Not_Convex, nameof(polygon));
 
 			if (!cw.HasValue) 
@@ -1312,7 +1315,7 @@ namespace AleProjects.Spherical
 			double N1x = cartesian.Y;
 			double N1y = -cartesian.X;
 
-			if (Math.Abs(N1x) <= double.Epsilon && Math.Abs(N1y) <= double.Epsilon)
+			if (Math.Abs(N1x) <= EPSILON && Math.Abs(N1y) <= EPSILON)
 				return cartesian.Z >= 0 ? Math.PI : 0.0;
 
 			var (N2x, N2y,N2z) = _CrossProduct(cartesian.X, cartesian.Y, cartesian.Z, V.X, V.Y, V.Z, false);
@@ -1334,10 +1337,10 @@ namespace AleProjects.Spherical
 		/// <summary>
 		/// Tests two sections for intersection.
 		/// </summary>
-		/// <param name="vertex1S1">First section start.</param>
-		/// <param name="vertex2S1">First section end.</param>
-		/// <param name="vertex1S2">Second section start.</param>
-		/// <param name="vertex2S2">Second section end.</param>
+		/// <param name="V1S1">First section start.</param>
+		/// <param name="V2S1">First section end.</param>
+		/// <param name="V1S2">Second section start.</param>
+		/// <param name="V2S2">Second section end.</param>
 		/// <returns>1 if intersect, -1 if not, 0 if one section contain start or end of another section.</returns>
 		public static int SectionsIntersect(ICartesian V1S1, ICartesian V2S1, ICartesian V1S2, ICartesian V2S2)
 		{
@@ -1359,10 +1362,10 @@ namespace AleProjects.Spherical
 		/// <summary>
 		/// Tests two sections for intersection with given tolerance. Sections may not intersect, but to be close to each other with some tolerance.
 		/// </summary>
-		/// <param name="vertex1S1">First section start.</param>
-		/// <param name="vertex2S1">First section end.</param>
-		/// <param name="vertex1S2">Second section start.</param>
-		/// <param name="vertex2S2">Second section end.</param>
+		/// <param name="V1S1">First section start.</param>
+		/// <param name="V2S1">First section end.</param>
+		/// <param name="V1S2">Second section start.</param>
+		/// <param name="V2S2">Second section end.</param>
 		/// <param name="tolerance">Tolerance given as an angle at the origin.</param>
 		/// <returns></returns>
 		public static int SectionsIntersect(ICartesian V1S1, ICartesian V2S1, ICartesian V1S2, ICartesian V2S2, double tolerance)
@@ -1393,8 +1396,8 @@ namespace AleProjects.Spherical
 		/// Negative value indicates test failure and its absolute value represents a minimum angle to the geodesical arc.
 		/// </summary>
 		/// <param name="cartesian">Vector to test.</param>
-		/// <param name="vertex1">First vector.</param>
-		/// <param name="vertex2">Second vector.</param>
+		/// <param name="V1">First vector.</param>
+		/// <param name="V2">Second vector.</param>
 		/// <returns>Minimum angle from the vector to the geodesical arc. Positive when succeeds.</returns>
 		public static double TestSection(this ICartesian cartesian, ICartesian V1, ICartesian V2)
 		{
@@ -1412,7 +1415,7 @@ namespace AleProjects.Spherical
 
 			if (l1 * l2 > 0.0 || 
 				_DotProduct(cartesian.X, cartesian.Y, cartesian.Z, V1.X, V1.Y, V1.Z) < 0.0 || 
-				_DotProduct(cartesian.X, cartesian.Y, cartesian.Z, V2.X, V2.Y, V2.Z) < 0.0) alpha = -alpha - double.Epsilon;
+				_DotProduct(cartesian.X, cartesian.Y, cartesian.Z, V2.X, V2.Y, V2.Z) < 0.0) alpha = -alpha - EPSILON;
 
 			return alpha;
 		}
@@ -1974,12 +1977,12 @@ namespace AleProjects.Spherical
 			// when distance is 0 or second point is on exactly opposite side of the earth - all directions are equal and we consider heading as 0 
 			// or when cosine_c = sin(Lat) == -1 it means that Latitude is -90 degrees and we are in South Pole, so every direction is to north and heading=0
 			
-			if (1 - Math.Abs(cosine_D) <= double.Epsilon || Math.Abs(cosine_c + 1.0) <= double.Epsilon) 
+			if (1 - Math.Abs(cosine_D) <= EPSILON || Math.Abs(cosine_c + 1.0) <= EPSILON) 
 				return 0.0;
 
 			// when cosine_c = sin(Lat) == 1 it means that Latitude is 90 degrees and we are in North Pole, so every direction is to south and heading=180
 			
-			if (Math.Abs(cosine_c - 1.0) <= double.Epsilon) 
+			if (Math.Abs(cosine_c - 1.0) <= EPSILON) 
 				return Math.PI;
 
 			double cosine_alpha = (cosine_a - cosine_D * cosine_c) / Math.Sqrt((1.0 - cosine_D * cosine_D) * (1.0 - cosine_c * cosine_c));
@@ -2020,7 +2023,7 @@ namespace AleProjects.Spherical
 		/// <param name="from">First location.</param>
 		/// <param name="lat">Latitude of the second location in radians.</param>
 		/// <param name="lon">Longitude of the second location in radians.</param>
-		/// <param name="heading">Out parameter with initial heading in radians.</param>
+		/// <param name="azimuth">Out parameter with initial heading in radians.</param>
 		/// <param name="sphereRadius">Radius of sphere. Default value is radius of the Earth.</param>
 		/// <returns>Distance between two locations.</returns>
 		public static double DistanceAndAzimuthTo(this IGeoCoordinate from, double lat, double lon, out double azimuth, double sphereRadius = EARTH_MEAN_RADIUS)
@@ -2030,7 +2033,7 @@ namespace AleProjects.Spherical
 			double cosine_D = Math.Cos(from.Lat) * Math.Cos(lat) * (Math.Cos(from.Lon - lon) - 1.0) + Math.Cos(from.Lat - lat);
 			double distance = Math.Acos(cosine_D) * sphereRadius;
 
-			if (1 - Math.Abs(cosine_D) <= double.Epsilon || Math.Abs(cosine_c + 1.0) <= double.Epsilon)
+			if (1 - Math.Abs(cosine_D) <= EPSILON || Math.Abs(cosine_c + 1.0) <= EPSILON)
 			{
 				// when distance is 0 or second point is on exactly opposite side of the earth - all directions are equal and we consider heading as 0 
 				// or when cosine_c = sin(Lat) == -1 it means that Latitude is -90 degrees and we are at South Pole, so every direction is to north and heading=0
@@ -2038,7 +2041,7 @@ namespace AleProjects.Spherical
 				return distance;
 			}
 
-			if (Math.Abs(cosine_c - 1.0) <= double.Epsilon)
+			if (Math.Abs(cosine_c - 1.0) <= EPSILON)
 			{
 				// when cosine_c = sin(Lat) == 1 it means that Latitude is 90 degrees and we are at North Pole, so every direction is to south and heading=180
 				azimuth = Math.PI;
@@ -2070,7 +2073,7 @@ namespace AleProjects.Spherical
 		/// </summary>
 		/// <param name="from">First location.</param>
 		/// <param name="point">Second location.</param>
-		/// <param name="heading">Out parameter with initial heading in radians.</param>
+		/// <param name="azimuth">Out parameter with initial heading in radians.</param>
 		/// <param name="sphereRadius">Radius of the sphere. Default value is the radius of the Earth.</param>
 		/// <returns>Distance between two locations.</returns>
 		public static double DistanceAndAzimuthTo(this IGeoCoordinate from, IGeoCoordinate point, out double azimuth, double sphereRadius = EARTH_MEAN_RADIUS)
@@ -2095,13 +2098,13 @@ namespace AleProjects.Spherical
 			if (distance < 0.0) 
 				distance = -distance;
 
-			if (distance <= double.Epsilon)
+			if (distance <= EPSILON)
 				return NewGeoCoordinate<T>(lat, lon);
 
-			if (Math.Abs(lat - Math.PI / 2.0) <= double.Epsilon)
+			if (Math.Abs(lat - Math.PI / 2.0) <= EPSILON)
 				return NewGeoCoordinate<T>(Math.PI / 2.0 - distance / sphereRadius, 0.0);
 
-			if (Math.Abs(lat + Math.PI / 2.0) <= double.Epsilon)
+			if (Math.Abs(lat + Math.PI / 2.0) <= EPSILON)
 				return NewGeoCoordinate<T>(distance / sphereRadius - Math.PI / 2.0, 0.0);
 
 
@@ -2293,7 +2296,7 @@ namespace AleProjects.Spherical
 		/// Extension method "normalizing" a longitude in degrees to the [-180..180] range. 
 		/// For example, longitude 182 degrees is -178 degrees.
 		/// </summary>
-		/// <param name="lon">Longitude in degrees.</param>
+		/// <param name="longitude">Longitude in degrees.</param>
 		/// <returns>Longitude in the [-180..180] range.</returns>
 		public static double ToLongitudeRangeDegrees(this double longitude)
 		{
