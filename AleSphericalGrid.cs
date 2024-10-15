@@ -10,14 +10,13 @@
 
 using System;
 using System.Collections.Generic;
-using System.Drawing;
 using System.Linq;
 using System.Text;
 
 namespace AleProjects.Spherical.Grid
 {
 
-	public interface IQuadKeyIdentified : IGeoCoordinate
+	public interface IQuadKeyIdentified : ICartesian
 	{
 		long QuadKey { get; set; }
 	}
@@ -42,30 +41,30 @@ namespace AleProjects.Spherical.Grid
 
 		#region unit-vectors
 		// Unit vectors for the coordinate system.
-		public static readonly CartesianStruct PositiveI = new CartesianStruct(1.0, 0.0, 0.0);
-		public static readonly CartesianStruct PositiveJ = new CartesianStruct(0.0, 1.0, 0.0);
-		public static readonly CartesianStruct PositiveK = new CartesianStruct(0.0, 0.0, 1.0);
-		public static readonly CartesianStruct NegativeI = new CartesianStruct(-1.0, 0.0, 0.0);
-		public static readonly CartesianStruct NegativeJ = new CartesianStruct(0.0, -1.0, 0.0);
-		public static readonly CartesianStruct NegativeK = new CartesianStruct(0.0, 0.0, -1.0);
+		public static readonly CartesianValue PositiveI = new CartesianValue(1.0, 0.0, 0.0);
+		public static readonly CartesianValue PositiveJ = new CartesianValue(0.0, 1.0, 0.0);
+		public static readonly CartesianValue PositiveK = new CartesianValue(0.0, 0.0, 1.0);
+		public static readonly CartesianValue NegativeI = new CartesianValue(-1.0, 0.0, 0.0);
+		public static readonly CartesianValue NegativeJ = new CartesianValue(0.0, -1.0, 0.0);
+		public static readonly CartesianValue NegativeK = new CartesianValue(0.0, 0.0, -1.0);
 		#endregion
 
 		#region primary-tiles
 		/// <summary>
 		/// Represents sphere primary tiles (1/8 of sphere, face of octahedron projected in sphere). 
 		/// </summary>
-		public static readonly CartesianStruct[][] PrimaryTiles =
+		public static readonly CartesianValue[][] PrimaryTiles =
 		{
 			// North hemisphere
-			new CartesianStruct[] { PositiveI, PositiveJ, PositiveK },
-			new CartesianStruct[] { PositiveJ, NegativeI, PositiveK },
-			new CartesianStruct[] { NegativeI, NegativeJ, PositiveK },
-			new CartesianStruct[] { NegativeJ, PositiveI, PositiveK },
+			new CartesianValue[] { PositiveI, PositiveJ, PositiveK },
+			new CartesianValue[] { PositiveJ, NegativeI, PositiveK },
+			new CartesianValue[] { NegativeI, NegativeJ, PositiveK },
+			new CartesianValue[] { NegativeJ, PositiveI, PositiveK },
 			// South hemisphere
-			new CartesianStruct[] { PositiveJ, PositiveI, NegativeK },
-			new CartesianStruct[] { NegativeI, PositiveJ, NegativeK },
-			new CartesianStruct[] { NegativeJ, NegativeI, NegativeK },
-			new CartesianStruct[] { PositiveI, NegativeJ, NegativeK }
+			new CartesianValue[] { PositiveJ, PositiveI, NegativeK },
+			new CartesianValue[] { NegativeI, PositiveJ, NegativeK },
+			new CartesianValue[] { NegativeJ, NegativeI, NegativeK },
+			new CartesianValue[] { PositiveI, NegativeJ, NegativeK }
 		};
 		#endregion
 
@@ -74,9 +73,11 @@ namespace AleProjects.Spherical.Grid
 		/// <summary>
 		/// Finds a primary tile (1/8 part of a sphere, face of octahedron projected on a sphere surface) containing specified location on a sphere.
 		/// </summary>
+		/// <typeparam name="T">Type T must implement the ICartesian interface.</typeparam>
 		/// <param name="location">Location on the sphere.</param>
 		/// <returns>Index of primary sphere tile.</returns>
-		public static int FindPrimaryTile(ICartesian location)
+		public static int FindPrimaryTile<T>(T location)
+			where T : ICartesian
 		{
 			for (int i = 0; i < PrimaryTiles.Length; i++)
 				if (SphericalExtension._InsideTriangle(location.X, location.Y, location.Z, PrimaryTiles[i][0], PrimaryTiles[i][1], PrimaryTiles[i][2]))
@@ -88,12 +89,12 @@ namespace AleProjects.Spherical.Grid
 		/// <summary>
 		/// Finds a primary tile (1/8 part of a sphere, face of octahedron projected on a sphere surface) containing specified location on a sphere.
 		/// </summary>
-		/// <param name="lat">Latitude of the location.</param>
-		/// <param name="lon">Longitude of the location.</param>
+		/// <param name="lat">Latitude of the location in degrees.</param>
+		/// <param name="lon">Longitude of the locationin degrees.</param>
 		/// <returns></returns>
 		public static int FindPrimaryTile(double lat, double lon)
 		{
-			CartesianStruct p = new CartesianStruct(lat, lon);
+			CartesianValue p = new CartesianValue(lat, lon);
 
 			return FindPrimaryTile(p);
 		}
@@ -101,23 +102,27 @@ namespace AleProjects.Spherical.Grid
 		/// <summary>
 		/// Calculates QuadKey of a tile at specified grid level containing a location with given latitude and longitude.
 		/// </summary>
+		/// <typeparam name="T">Type T must implement the ICartesian interface.</typeparam>
 		/// <param name="lat">Latitude of location.</param>
 		/// <param name="lon">Longitude of location.</param>
 		/// <param name="level">Grid level.</param>
 		/// <returns>QuadKey which uniquely identifies tile containing given location.</returns>
-		public static long BuildQuadKey(double lat, double lon, int level)
+		public static long BuildQuadKey<T>(T location, int level)
+			where T : ICartesian
 		{
 			if (level < 0 || level > ABSOLUTE_MAX_LEVEL)
 				throw new ArgumentOutOfRangeException(nameof(level));
 
-			var (x, y, z) = SphericalExtension.SphericalToCartesian(lat, lon);
+			double x = location.X;
+			double y = location.Y;
+			double z = location.Z;
 
-			CartesianStruct vertex1 = new CartesianStruct();
-			CartesianStruct vertex2 = new CartesianStruct();
-			CartesianStruct vertex3 = new CartesianStruct();
-			CartesianStruct v1 = new CartesianStruct();
-			CartesianStruct v2 = new CartesianStruct();
-			CartesianStruct v3 = new CartesianStruct();
+			CartesianValue vertex1 = new CartesianValue();
+			CartesianValue vertex2 = new CartesianValue();
+			CartesianValue vertex3 = new CartesianValue();
+			CartesianValue v1 = new CartesianValue();
+			CartesianValue v2 = new CartesianValue();
+			CartesianValue v3 = new CartesianValue();
 
 			long result = 0;
 
@@ -176,9 +181,10 @@ namespace AleProjects.Spherical.Grid
 		/// <param name="location">Location on sphere.</param>
 		/// <param name="level">Grid level.</param>
 		/// <returns>QuadKey which uniquely identifies tile containing given location.</returns>
-		public static long BuildQuadKey(IGeoCoordinate location, int level)
+		public static long BuildQuadKey(double latitude, double longitude, int level)
 		{
-			return BuildQuadKey(location.Lat, location.Lon, level);
+			CartesianValue location = new CartesianValue(latitude, longitude, true);
+			return BuildQuadKey(location, level);
 		}
 
 		/// <summary>
@@ -203,21 +209,26 @@ namespace AleProjects.Spherical.Grid
 		/// <summary>
 		/// Returns a quadkey for a primary (most top) tile by its index.
 		/// </summary>
-		/// <param name="tileNumber">Index of primary tile.</param>
-		/// <returns>quadkey for primary tile.</returns>
+		/// <param name="tileNumber">Index of the primary tile.</param>
+		/// <returns>Quadkey for the primary tile.</returns>
 		public static long QuadKeyForPrimaryTile(int tileNumber)
 		{
 			return (long)(tileNumber & 7) << (64 - 3 - 1);
 		}
 
 		/// <summary>
-		/// Decomposes QuadKey to triangles indexes at each grid level. 
+		/// Decomposes QuadKey to triangle indexes at each grid level. 
 		/// </summary>
 		/// <param name="quadKey">Quadkey to decompose.</param>
 		/// <returns>Decomposed quadkey.</returns>
-		public static int[] QuadKeyParts(long quadKey)
+
+#if NETCOREAPP2_1_OR_GREATER
+		public static void QuadKeyParts(long quadKey, Span<int> keys)
+#else
+		public static void QuadKeyParts(long quadKey, int[] keys)
+#endif
 		{
-			int[] keys = new int[ABSOLUTE_MAX_LEVEL + 1];
+			//= new int[ABSOLUTE_MAX_LEVEL + 1];
 
 			for (int i = ABSOLUTE_MAX_LEVEL; i > 0; i--)
 			{
@@ -226,15 +237,13 @@ namespace AleProjects.Spherical.Grid
 			}
 
 			keys[0] = (int)(quadKey & 7);
-
-			return keys;
 		}
 
 		/// <summary>
 		/// Returns grid level where square of a tile relates to square of a circle in given ratio (approximately).  
 		/// </summary>
 		/// <param name="angle">Represents the circle radius.</param>
-		/// <param name="circleToTriangleRatio">Tile to circle ratio.</param>
+		/// <param name="triangleToCircleRatio">Tile to circle ratio.</param>
 		/// <returns>Grid level.</returns>
 		public static int LevelForCircleToTriangleRatio(double angle, double circleToTriangleRatio)
 		{
@@ -274,17 +283,17 @@ namespace AleProjects.Spherical.Grid
 		/// <summary>
 		/// First vertex of the tile triangle.
 		/// </summary>
-		public CartesianStruct Vertex1 { get; protected set; }
+		public CartesianValue Vertex1 { get; protected set; }
 
 		/// <summary>
 		/// Second vertex of the tile triangle.
 		/// </summary>
-		public CartesianStruct Vertex2 { get; protected set; }
+		public CartesianValue Vertex2 { get; protected set; }
 
 		/// <summary>
 		/// Third vertex of the tile triangle.
 		/// </summary>
-		public CartesianStruct Vertex3 { get; protected set; }
+		public CartesianValue Vertex3 { get; protected set; }
 
 		/// <summary>
 		/// Parent tile at the upper level.
@@ -313,7 +322,7 @@ namespace AleProjects.Spherical.Grid
 			{
 				SphereGridTile result = this;
 
-				while (result.Parent != null) 
+				while (result.Parent != null)
 					result = result.Parent;
 
 				return result;
@@ -346,7 +355,8 @@ namespace AleProjects.Spherical.Grid
 		/// </summary>
 		public long QuadKeyUpperValue
 		{
-			get => QuadKey | (0x4f_ff_ff_ff_ff_ff_ff_ff >> (Level * 2 + 2));
+			//get => QuadKey | (0x4f_ff_ff_ff_ff_ff_ff_ff >> (Level * 2 + 2));
+			get => QuadKey | (0x7f_ff_ff_ff_ff_ff_ff_ff >> (Level * 2 + 3));
 		}
 
 		/// <summary>
@@ -369,28 +379,28 @@ namespace AleProjects.Spherical.Grid
 			if (level < 0 || level > SphereGridHelper.ABSOLUTE_MAX_LEVEL)
 				throw new ArgumentOutOfRangeException(nameof(level));
 
-			int k = SphereGridHelper.FindPrimaryTile(location);
-			long quadkey = (long)k << (64 - 1 - 3); // 1 - sign, 3 - bits for 0..7 values
+			CartesianValue locationValue = new CartesianValue(location);
+			int k = SphereGridHelper.FindPrimaryTile(locationValue);
+			long quadkey = (long)k << (64 - 1 - 3); // 1 - sign bit, 3 - bits for 0..7 values
 
 			if (level > 0)
 			{
 				SphereGridTile tile = new SphereGridTile()
 				{
 					QuadKey = quadkey,
-					Vertex1 = new CartesianStruct(SphereGridHelper.PrimaryTiles[k][0]),
-					Vertex2 = new CartesianStruct(SphereGridHelper.PrimaryTiles[k][1]),
-					Vertex3 = new CartesianStruct(SphereGridHelper.PrimaryTiles[k][2]),
+					Vertex1 = new CartesianValue(SphereGridHelper.PrimaryTiles[k][0]),
+					Vertex2 = new CartesianValue(SphereGridHelper.PrimaryTiles[k][1]),
+					Vertex3 = new CartesianValue(SphereGridHelper.PrimaryTiles[k][2]),
 				};
 
 				SphereGridTile nextTile;
 
 				for (int i = 0; i < level; i++)
-					if ((nextTile = tile.SplitAndFind(location)) != null)
+					if ((nextTile = tile.SplitAndFind(locationValue)) != null)
 					{
 						nextTile.Parent = tile;
 						tile = nextTile;
 					}
-					else throw new InvalidOperationException();
 
 				QuadKey = tile.QuadKey;
 				Level = level;
@@ -402,9 +412,9 @@ namespace AleProjects.Spherical.Grid
 			else
 			{
 				QuadKey = quadkey;
-				Vertex1 = new CartesianStruct(SphereGridHelper.PrimaryTiles[k][0]);
-				Vertex2 = new CartesianStruct(SphereGridHelper.PrimaryTiles[k][1]);
-				Vertex3 = new CartesianStruct(SphereGridHelper.PrimaryTiles[k][2]);
+				Vertex1 = new CartesianValue(SphereGridHelper.PrimaryTiles[k][0]);
+				Vertex2 = new CartesianValue(SphereGridHelper.PrimaryTiles[k][1]);
+				Vertex3 = new CartesianValue(SphereGridHelper.PrimaryTiles[k][2]);
 			}
 		}
 
@@ -421,16 +431,22 @@ namespace AleProjects.Spherical.Grid
 			if (level < 0 || level > SphereGridHelper.ABSOLUTE_MAX_LEVEL)
 				throw new ArgumentOutOfRangeException(nameof(level));
 
+
 			if (level > 0)
 			{
-				int[] keys = SphereGridHelper.QuadKeyParts(quadKey);
+#if NETCOREAPP2_1_OR_GREATER
+				Span<int> keys = stackalloc int[SphereGridHelper.ABSOLUTE_MAX_LEVEL + 1];
+#else
+				int[] keys = new int[SphereGridHelper.ABSOLUTE_MAX_LEVEL + 1];
+#endif
+				SphereGridHelper.QuadKeyParts(quadKey, keys);
 				int k = keys[0];
 
 				SphereGridTile tile = new SphereGridTile()
 				{
-					Vertex1 = new CartesianStruct(SphereGridHelper.PrimaryTiles[k][0]),
-					Vertex2 = new CartesianStruct(SphereGridHelper.PrimaryTiles[k][1]),
-					Vertex3 = new CartesianStruct(SphereGridHelper.PrimaryTiles[k][2]),
+					Vertex1 = new CartesianValue(SphereGridHelper.PrimaryTiles[k][0]),
+					Vertex2 = new CartesianValue(SphereGridHelper.PrimaryTiles[k][1]),
+					Vertex3 = new CartesianValue(SphereGridHelper.PrimaryTiles[k][2]),
 					QuadKey = quadKey & 0x70_00_00_00_00_00_00_00
 				};
 
@@ -455,12 +471,12 @@ namespace AleProjects.Spherical.Grid
 			}
 			else
 			{
-				int k = (int)(quadKey >> (64 - 1 - 3)); // 1 - sign, 3 - bits for 0..7 values
+				int k = (int)(quadKey >> (64 - 1 - 3)); // 1 - sign bit, 3 - bits for 0..7 values
 
 				QuadKey = quadKey;
-				Vertex1 = new CartesianStruct(SphereGridHelper.PrimaryTiles[k][0]);
-				Vertex2 = new CartesianStruct(SphereGridHelper.PrimaryTiles[k][1]);
-				Vertex3 = new CartesianStruct(SphereGridHelper.PrimaryTiles[k][2]);
+				Vertex1 = new CartesianValue(SphereGridHelper.PrimaryTiles[k][0]);
+				Vertex2 = new CartesianValue(SphereGridHelper.PrimaryTiles[k][1]);
+				Vertex3 = new CartesianValue(SphereGridHelper.PrimaryTiles[k][2]);
 			}
 		}
 
@@ -468,21 +484,23 @@ namespace AleProjects.Spherical.Grid
 		/// <summary>
 		/// Splits this tile and finds a sub-tile containing given location.
 		/// </summary>
+		/// <typeparam name="T">Type T must implement the ICartesian interface.</typeparam>
 		/// <param name="location">Location.</param>
 		/// <returns>Sub-tile containing location.</returns>
-		public SphereGridTile SplitAndFind(ICartesian location)
+		public SphereGridTile SplitAndFind<T>(T location)
+			where T : ICartesian
 		{
 			var (x, y, z) = SphericalExtension._Normalized(Vertex1.X + Vertex3.X, Vertex1.Y + Vertex3.Y, Vertex1.Z + Vertex3.Z);
-			CartesianStruct v1 = new CartesianStruct(x, y, z);
+			CartesianValue v1 = new CartesianValue(x, y, z);
 			(x, y, z) = SphericalExtension._Normalized(Vertex3.X + Vertex2.X, Vertex3.Y + Vertex2.Y, Vertex3.Z + Vertex2.Z);
-			CartesianStruct v2 = new CartesianStruct(x, y, z);
+			CartesianValue v2 = new CartesianValue(x, y, z);
 			(x, y, z) = SphericalExtension._Normalized(Vertex2.X + Vertex1.X, Vertex2.Y + Vertex1.Y, Vertex2.Z + Vertex1.Z);
-			CartesianStruct v3 = new CartesianStruct(x, y, z);
+			CartesianValue v3 = new CartesianValue(x, y, z);
 
 			int level = this.Level + 1;
 
-			x = location.X; 
-			y = location.Y; 
+			x = location.X;
+			y = location.Y;
 			z = location.Z;
 
 			if (SphericalExtension._InsideTriangle(x, y, z, this.Vertex1, v3, v1))
@@ -532,11 +550,11 @@ namespace AleProjects.Spherical.Grid
 		public SphereGridTile[] Split()
 		{
 			var (x, y, z) = SphericalExtension._Normalized(Vertex1.X + Vertex3.X, Vertex1.Y + Vertex3.Y, Vertex1.Z + Vertex3.Z);
-			CartesianStruct v1 = new CartesianStruct(x, y, z);
+			CartesianValue v1 = new CartesianValue(x, y, z);
 			(x, y, z) = SphericalExtension._Normalized(Vertex3.X + Vertex2.X, Vertex3.Y + Vertex2.Y, Vertex3.Z + Vertex2.Z);
-			CartesianStruct v2 = new CartesianStruct(x, y, z);
+			CartesianValue v2 = new CartesianValue(x, y, z);
 			(x, y, z) = SphericalExtension._Normalized(Vertex2.X + Vertex1.X, Vertex2.Y + Vertex1.Y, Vertex2.Z + Vertex1.Z);
-			CartesianStruct v3 = new CartesianStruct(x, y, z);
+			CartesianValue v3 = new CartesianValue(x, y, z);
 
 			int level = this.Level + 1;
 
@@ -580,11 +598,11 @@ namespace AleProjects.Spherical.Grid
 		public void Split(SphereGridTile[] list)
 		{
 			var (x, y, z) = SphericalExtension._Normalized(Vertex1.X + Vertex3.X, Vertex1.Y + Vertex3.Y, Vertex1.Z + Vertex3.Z);
-			CartesianStruct v1 = new CartesianStruct(x, y, z);
+			CartesianValue v1 = new CartesianValue(x, y, z);
 			(x, y, z) = SphericalExtension._Normalized(Vertex3.X + Vertex2.X, Vertex3.Y + Vertex2.Y, Vertex3.Z + Vertex2.Z);
-			CartesianStruct v2 = new CartesianStruct(x, y, z);
+			CartesianValue v2 = new CartesianValue(x, y, z);
 			(x, y, z) = SphericalExtension._Normalized(Vertex2.X + Vertex1.X, Vertex2.Y + Vertex1.Y, Vertex2.Z + Vertex1.Z);
-			CartesianStruct v3 = new CartesianStruct(x, y, z);
+			CartesianValue v3 = new CartesianValue(x, y, z);
 
 			int level = this.Level + 1;
 
@@ -630,24 +648,24 @@ namespace AleProjects.Spherical.Grid
 		/// <summary>
 		/// Checks if this tile is covered (fully or partially) by a circle with given center and radius represented as an angle.  
 		/// </summary>
+		/// <typeparam name="T">Type T must implement the ICartesian interface.</typeparam>
 		/// <param name="center">Center of the circle.</param>
 		/// <param name="angle">Angle representing circle radius.</param>
 		/// <returns>True if the circle covers this tile.</returns>
-		public bool CoveredByCircle(ICartesian center, double angle)
+		public bool CoveredByCircle<T>(T center, double angle)
+			where T : ICartesian
 		{
 			double circleCosine = Math.Cos(angle);
+			double phi;
 
 			// any vertex inside circle or circle center inside triangle
 
 			if (SphericalExtension._Cosine(center.X, center.Y, center.Z, Vertex1.X, Vertex1.Y, Vertex1.Z) > circleCosine ||
 				SphericalExtension._Cosine(center.X, center.Y, center.Z, Vertex2.X, Vertex2.Y, Vertex2.Z) > circleCosine ||
 				SphericalExtension._Cosine(center.X, center.Y, center.Z, Vertex3.X, Vertex3.Y, Vertex3.Z) > circleCosine ||
-				SphericalExtension._InsideTriangle(center.X, center.Y, center.Z, Vertex1, Vertex2, Vertex3)) 
-				return true;
+				SphericalExtension._InsideTriangle(center.X, center.Y, center.Z, Vertex1, Vertex2, Vertex3)) return true;
 
 			// check side Vertex1-Vertex2
-
-			double phi;
 
 			var (vx, vy, vz) = SphericalExtension._CrossProduct(Vertex1.X, Vertex1.Y, Vertex1.Z, Vertex2.X, Vertex2.Y, Vertex2.Z, false);
 			var (cx, cy, cz) = SphericalExtension._CrossProduct(center.X, center.Y, center.Z, vx, vy, vz, false);
@@ -656,12 +674,8 @@ namespace AleProjects.Spherical.Grid
 				SphericalExtension._DotProduct(cx, cy, cz, Vertex2.X, Vertex2.Y, Vertex2.Z) < 0.0)
 			{
 				phi = Math.Acos(SphericalExtension._Cosine(vx, vy, vz, center.X, center.Y, center.Z));
-				
-				if (phi > Math.PI / 2) 
-					phi = Math.PI - phi;
-				
-				if (angle + phi > Math.PI / 2) 
-					return true;
+				if (phi > Math.PI / 2) phi = Math.PI - phi;
+				if (angle + phi > Math.PI / 2) return true;
 			}
 
 			// check side Vertex2-Vertex3
@@ -673,12 +687,8 @@ namespace AleProjects.Spherical.Grid
 				SphericalExtension._DotProduct(cx, cy, cz, Vertex3.X, Vertex3.Y, Vertex3.Z) < 0.0)
 			{
 				phi = Math.Acos(SphericalExtension._Cosine(vx, vy, vz, center.X, center.Y, center.Z));
-
-				if (phi > Math.PI / 2) 
-					phi = Math.PI - phi;
-				
-				if (angle + phi > Math.PI / 2) 
-					return true;
+				if (phi > Math.PI / 2) phi = Math.PI - phi;
+				if (angle + phi > Math.PI / 2) return true;
 			}
 
 			// check side Vertex3-Vertex1
@@ -690,12 +700,8 @@ namespace AleProjects.Spherical.Grid
 				SphericalExtension._DotProduct(cx, cy, cz, Vertex1.X, Vertex1.Y, Vertex1.Z) < 0.0)
 			{
 				phi = Math.Acos(SphericalExtension._Cosine(vx, vy, vz, center.X, center.Y, center.Z));
-
-				if (phi > Math.PI / 2) 
-					phi = Math.PI - phi;
-				
-				if (angle + phi > Math.PI / 2) 
-					return true;
+				if (phi > Math.PI / 2) phi = Math.PI - phi;
+				if (angle + phi > Math.PI / 2) return true;
 			}
 
 			return false;
@@ -704,14 +710,16 @@ namespace AleProjects.Spherical.Grid
 		/// <summary>
 		/// Checks if this tile is covered (fully or partially) by a polyline.
 		/// </summary>
+		/// <typeparam name="T">Type T must implement the ICartesian interface.</typeparam>
 		/// <param name="polyline">Vertices of the polyline.</param>
 		/// <param name="tolerance">Test tolerance in radians.</param>
 		/// <returns>True if the polyline covers this tile.</returns>
-		public bool CoveredByPolyline(IEnumerable<ICartesian> polyline, double tolerance)
+		public bool CoveredByPolyline<T>(IEnumerable<T> polyline, double tolerance)
+			where T : ICartesian
 		{
-			ICartesian vertex = polyline.First();
+			T vertex = polyline.First();
 
-			foreach (ICartesian v in polyline.Skip(1))
+			foreach (T v in polyline.Skip(1))
 			{
 				if (SphericalExtension.SectionsIntersect(Vertex1, Vertex2, vertex, v, tolerance) >= 0 ||
 					SphericalExtension.SectionsIntersect(Vertex2, Vertex3, vertex, v, tolerance) >= 0 ||
@@ -727,17 +735,19 @@ namespace AleProjects.Spherical.Grid
 		/// <summary>
 		/// Checks if this tile is covered (fully or partially) by a polygon.
 		/// </summary>
+		/// <typeparam name="T">Type T must implement the ICartesian interface.</typeparam>
 		/// <param name="polygon">Vertices of the polygon.</param>
 		/// <returns>True if the polygon covers this tile.</returns>
-		public bool CoveredByPolygon(IEnumerable<ICartesian> polygon)
+		public bool CoveredByPolygon<T>(IEnumerable<T> polygon)
+			where T : ICartesian
 		{
-			ICartesian vertex = polygon.Last();
+			T vertex = polygon.Last();
 
-			foreach (ICartesian v in polygon)
+			foreach (T v in polygon)
 			{
 				if (SphericalExtension.SectionsIntersect(Vertex1, Vertex2, vertex, v) >= 0 ||
 					SphericalExtension.SectionsIntersect(Vertex2, Vertex3, vertex, v) >= 0 ||
-					SphericalExtension.SectionsIntersect(Vertex3, Vertex1, vertex, v) >= 0) 
+					SphericalExtension.SectionsIntersect(Vertex3, Vertex1, vertex, v) >= 0)
 					return true;
 
 				vertex = v;
@@ -752,10 +762,12 @@ namespace AleProjects.Spherical.Grid
 		/// <summary>
 		/// Checks if this tile fully encloses a circle with given center and radius represented as an angle.
 		/// </summary>
+		/// <typeparam name="T">Type T must implement the ICartesian interface.</typeparam>
 		/// <param name="center">Center of the circle.</param>
 		/// <param name="angle">Angle representing circle radius.</param>
 		/// <returns>True if this tile fully encloses the circle.</returns>
-		public bool EnclosesCircle(ICartesian center, double angle)
+		public bool EnclosesCircle<T>(T center, double angle)
+			where T : ICartesian
 		{
 			double circleCosine = Math.Cos(angle);
 
@@ -764,48 +776,40 @@ namespace AleProjects.Spherical.Grid
 			if (SphericalExtension._Cosine(center.X, center.Y, center.Z, Vertex1.X, Vertex1.Y, Vertex1.Z) > circleCosine ||
 				SphericalExtension._Cosine(center.X, center.Y, center.Z, Vertex2.X, Vertex2.Y, Vertex2.Z) > circleCosine ||
 				SphericalExtension._Cosine(center.X, center.Y, center.Z, Vertex3.X, Vertex3.Y, Vertex3.Z) > circleCosine ||
-				!SphericalExtension._InsideTriangle(center.X, center.Y, center.Z, Vertex1, Vertex2, Vertex3)) return false;
+				!SphericalExtension._InsideTriangle(center.X, center.Y, center.Z, Vertex1, Vertex2, Vertex3))
+				return false;
 
 			// check side Vertex1-Vertex2
 
 			var (vx, vy, vz) = SphericalExtension._CrossProduct(Vertex1.X, Vertex1.Y, Vertex1.Z, Vertex2.X, Vertex2.Y, Vertex2.Z, false);
 			double phi = Math.Acos(SphericalExtension._Cosine(vx, vy, vz, center.X, center.Y, center.Z));
-			
-			if (phi > Math.PI / 2) 
-				phi = Math.PI - phi;
-			
-			if (angle + phi > Math.PI / 2) 
-				return false;
+			if (phi > Math.PI / 2) phi = Math.PI - phi;
+			if (angle + phi > Math.PI / 2) return false;
 
 			// check side Vertex2-Vertex3
 			(vx, vy, vz) = SphericalExtension._CrossProduct(Vertex2.X, Vertex2.Y, Vertex2.Z, Vertex3.X, Vertex3.Y, Vertex3.Z, false);
 			phi = Math.Acos(SphericalExtension._Cosine(vx, vy, vz, center.X, center.Y, center.Z));
-
-			if (phi > Math.PI / 2) 
-				phi = Math.PI - phi;
-
-			if (angle + phi > Math.PI / 2) 
-				return false;
+			if (phi > Math.PI / 2) phi = Math.PI - phi;
+			if (angle + phi > Math.PI / 2) return false;
 
 			// check side Vertex3-Vertex1
 			(vx, vy, vz) = SphericalExtension._CrossProduct(Vertex3.X, Vertex3.Y, Vertex3.Z, Vertex1.X, Vertex1.Y, Vertex1.Z, false);
 			phi = Math.Acos(SphericalExtension._Cosine(vx, vy, vz, center.X, center.Y, center.Z));
-
-			if (phi > Math.PI / 2) 
-				phi = Math.PI - phi;
-
+			if (phi > Math.PI / 2) phi = Math.PI - phi;
 			return angle + phi <= Math.PI / 2; // <= because 'false' above
 		}
 
 		/// <summary>
 		/// Checks if this tile fully encloses a polygon. Can be used for polylines too.
 		/// </summary>
+		/// <typeparam name="T">Type T must implement the ICartesian interface.</typeparam>
 		/// <param name="polygon">Vertices of the polygon or polyline.</param>
 		/// <returns>True if encloses.</returns>
-		public bool EnclosesPolygon(IEnumerable<ICartesian> polygon)
+		public bool EnclosesPolygon<T>(IEnumerable<T> polygon)
+			where T : ICartesian
 		{
-			foreach (var vertex in polygon)
-				if (!SphericalExtension._InsideTriangle(vertex.X, vertex.Y, vertex.Z, Vertex1, Vertex2, Vertex3)) 
+			foreach (T vertex in polygon)
+				if (!SphericalExtension._InsideTriangle(vertex.X, vertex.Y, vertex.Z, Vertex1, Vertex2, Vertex3))
 					return false;
 
 			return true;
@@ -819,7 +823,7 @@ namespace AleProjects.Spherical.Grid
 		/// <param name="sort">Sort if necessary.</param>
 		protected static void JoinTiles(List<SphereGridTile> tiles, int level, bool sort = true)
 		{
-			if (sort) 
+			if (sort)
 				tiles.Sort();
 
 			bool hasJoined = true;
@@ -853,14 +857,16 @@ namespace AleProjects.Spherical.Grid
 		/// <summary>
 		/// Returns a list of tiles covering (fully or partially) a circle with given center and radius represented as an angle. 
 		/// </summary>
+		/// <typeparam name="T">Type T must implement the ICartesian interface.</typeparam>
 		/// <param name="center">Center of circle.</param>
 		/// <param name="angle">Angle representing circle radius.</param>
 		/// <param name="level">Maximum grid level of the tiles.</param>
 		/// <param name="join">Join tiles if possible.</param>
 		/// <returns>List of tiles covering circle.</returns>
-		public static List<SphereGridTile> CoverCircleByTiles(ICartesian center, double angle, int level, bool join)
+		public static List<SphereGridTile> CoverCircleByTiles<T>(T center, double angle, int level, bool join)
+			where T : ICartesian
 		{
-			if (level < 0 || level > SphereGridHelper.ABSOLUTE_MAX_LEVEL) 
+			if (level < 0 || level > SphereGridHelper.ABSOLUTE_MAX_LEVEL)
 				throw new ArgumentOutOfRangeException(nameof(level));
 
 			SphereGridTile tile = new SphereGridTile(center, 0);
@@ -893,7 +899,7 @@ namespace AleProjects.Spherical.Grid
 				result.RemoveRange(0, n);
 			}
 
-			if (join && level > 0 && result.Count > 1) 
+			if (join && level > 0 && result.Count > 1)
 				JoinTiles(result, level);
 
 			return result;
@@ -902,11 +908,13 @@ namespace AleProjects.Spherical.Grid
 		/// <summary>
 		/// Returns a list of tiles covering (fully or partially) a polyline. 
 		/// </summary>
+		/// <typeparam name="T">Type T must implement the ICartesian interface.</typeparam>
 		/// <param name="polyline">Vertices of the polyline.</param>
 		/// <param name="level">Maximum grid level of tiles.</param>
 		/// <param name="join">Join tiles if possible.</param>
 		/// <returns>List of tiles covering the polyline.</returns>
-		public static List<SphereGridTile> CoverPolylineByTiles(IEnumerable<ICartesian> polyline, int level, double tolerance, bool join)
+		public static List<SphereGridTile> CoverPolylineByTiles<T>(IEnumerable<T> polyline, int level, double tolerance, bool join)
+			where T : ICartesian
 		{
 			if (level < 0 || level > SphereGridHelper.ABSOLUTE_MAX_LEVEL)
 				throw new ArgumentOutOfRangeException(nameof(level));
@@ -940,7 +948,7 @@ namespace AleProjects.Spherical.Grid
 				result.RemoveRange(0, n);
 			}
 
-			if (join && level > 0 && result.Count > 1) 
+			if (join && level > 0 && result.Count > 1)
 				JoinTiles(result, level);
 
 			return result;
@@ -949,11 +957,13 @@ namespace AleProjects.Spherical.Grid
 		/// <summary>
 		/// Returns a list of tiles covering (fully or partially) a polygon. 
 		/// </summary>
+		/// <typeparam name="T">Type T must implement the ICartesian interface.</typeparam>
 		/// <param name="polygon">Vertices of the polygon.</param>
 		/// <param name="level">Maximum grid level of tiles.</param>
 		/// <param name="join">Join tiles if possible.</param>
 		/// <returns>List of tiles covering the polygon.</returns>
-		public static List<SphereGridTile> CoverPolygonByTiles(IEnumerable<ICartesian> polygon, int level, bool join)
+		public static List<SphereGridTile> CoverPolygonByTiles<T>(IEnumerable<T> polygon, int level, bool join)
+			where T : ICartesian
 		{
 			if (level < 0 || level > SphereGridHelper.ABSOLUTE_MAX_LEVEL)
 				throw new ArgumentOutOfRangeException(nameof(level));
@@ -988,7 +998,7 @@ namespace AleProjects.Spherical.Grid
 				result.RemoveRange(0, n);
 			}
 
-			if (join && level > 0 && result.Count > 1) 
+			if (join && level > 0 && result.Count > 1)
 				JoinTiles(result, level);
 
 			return result;
@@ -1019,7 +1029,13 @@ namespace AleProjects.Spherical.Grid
 
 		public override string ToString()
 		{
-			int[] keys = SphereGridHelper.QuadKeyParts(QuadKey);
+#if NETCOREAPP2_1_OR_GREATER
+			Span<int> keys = stackalloc int[SphereGridHelper.ABSOLUTE_MAX_LEVEL + 1];
+#else
+			int[] keys = new int[SphereGridHelper.ABSOLUTE_MAX_LEVEL + 1];
+#endif
+
+			SphereGridHelper.QuadKeyParts(QuadKey, keys);
 
 			StringBuilder result = new StringBuilder(keys[0].ToString(), 128);
 
