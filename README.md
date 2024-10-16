@@ -1,6 +1,6 @@
 This repository contains two C# code files with a set of interfaces and classes for calculations on a sphere and for work with sphere triangular grid.
 
-This is new version of the library which is incompatible with previous one. Previous version stays in v1 branch.
+_This is a new version of the library which is incompatible with previous one which stays in **v1** branch._
 
 The first file AleSpherical.cs defines namespace aleprojects.spherical that provides interfaces ICartesian (vector), IGeoCoordinate (location on a sphere), classes implementing them, and static class SphericalExtension with extension methods. Extension methods allow to solve such geospatial tasks like to find a distance or azimuth from one point to another, to check if a point is inside a spherical polygon or belongs to a polyline, to inflate a spherical polygon, to calculate sunrise and sunset times (for the Earth), polyline encoding and decoding, etc. [Learn more](/doc/AleSpherical.md)
 

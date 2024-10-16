@@ -89,12 +89,12 @@ namespace AleProjects.Spherical.Grid
 		/// <summary>
 		/// Finds a primary tile (1/8 part of a sphere, face of octahedron projected on a sphere surface) containing specified location on a sphere.
 		/// </summary>
-		/// <param name="lat">Latitude of the location in degrees.</param>
-		/// <param name="lon">Longitude of the locationin degrees.</param>
+		/// <param name="latitude">Latitude of the location in degrees.</param>
+		/// <param name="longitude">Longitude of the locationin degrees.</param>
 		/// <returns></returns>
-		public static int FindPrimaryTile(double lat, double lon)
+		public static int FindPrimaryTile(double latitude, double longitude)
 		{
-			CartesianValue p = new CartesianValue(lat, lon);
+			CartesianValue p = new CartesianValue(latitude, longitude);
 
 			return FindPrimaryTile(p);
 		}
@@ -103,8 +103,7 @@ namespace AleProjects.Spherical.Grid
 		/// Calculates QuadKey of a tile at specified grid level containing a location with given latitude and longitude.
 		/// </summary>
 		/// <typeparam name="T">Type T must implement the ICartesian interface.</typeparam>
-		/// <param name="lat">Latitude of location.</param>
-		/// <param name="lon">Longitude of location.</param>
+		/// <param name="location">Location on the sphere.</param>
 		/// <param name="level">Grid level.</param>
 		/// <returns>QuadKey which uniquely identifies tile containing given location.</returns>
 		public static long BuildQuadKey<T>(T location, int level)
