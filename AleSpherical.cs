@@ -1641,9 +1641,22 @@ namespace AleProjects.Spherical
 
 				tp1 = _DotProduct(Nx, Ny, Nz, V1S1.X, V1S1.Y, V1S1.Z);
 				tp2 = _DotProduct(Nx, Ny, Nz, V2S1.X, V2S1.Y, V2S1.Z);
+
+				if (tp1 * tp2 <= 0.0)
+				{
+					double x1 = V1S1.X + V2S1.X;
+					double y1 = V1S1.Y + V2S1.Y;
+					double z1 = V1S1.Z + V2S1.Z;
+					double x2 = V1S2.X + V2S2.X;
+					double y2 = V1S2.Y + V2S2.Y;
+					double z2 = V1S2.Z + V2S2.Z;
+
+					if (_Cosine(x1, y1, z1, x2, y2, z2) >= 0.0)
+						return 1;
+				}
 			}
 
-			return -Math.Sign(tp1 * tp2);
+			return -1;
 		}
 
 		/// <summary>
