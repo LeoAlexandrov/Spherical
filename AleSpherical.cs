@@ -355,6 +355,62 @@ namespace AleProjects.Spherical
 			Latitude = latitude;
 			Longitude = longitude;
 		}
+
+		public LatLonValue(string text)
+		{
+			if (string.IsNullOrEmpty(text))
+			{
+				Latitude = 0.0;
+				Longitude = 0.0;
+
+				return;
+			}
+
+			int commaIndex = text.IndexOf(',');
+
+			if (commaIndex <= 0 || commaIndex == text.Length - 1)
+				throw new ArgumentException("Invalid text format for LatLonValue.", nameof(text));
+
+			var fmt = new System.Globalization.NumberFormatInfo();
+
+			if (!double.TryParse(text.AsSpan(0, commaIndex), fmt, out double latitude) ||
+				latitude > 90.0 || latitude < -90.0)
+				throw new ArgumentException("Invalid latitude value in text.", nameof(text));
+
+			if (!double.TryParse(text.AsSpan(commaIndex + 1), fmt, out double longitude) ||
+				longitude > 180.0 || longitude < -180.0)
+				throw new ArgumentException("Invalid longitude value in text.", nameof(text));
+
+			Latitude = latitude;
+			Longitude = longitude;
+		}
+
+		public static bool TryParse(string text, out LatLonValue val)
+		{
+			val = default;
+
+			if (string.IsNullOrEmpty(text))
+				return false;
+
+			int commaIndex = text.IndexOf(',');
+
+			if (commaIndex <= 0 || commaIndex == text.Length - 1)
+				return false;
+
+			var fmt = new System.Globalization.NumberFormatInfo();
+
+			if (!double.TryParse(text.AsSpan(0, commaIndex), fmt, out double latitude) || latitude > 90.0 || latitude < -90.0)
+				return false;
+
+			if (!double.TryParse(text.AsSpan(commaIndex + 1), fmt, out double longitude) || longitude > 180.0 || longitude < -180.0)
+				return false;
+
+			val.Latitude = latitude;
+			val.Longitude = longitude;
+
+			return true;
+		}
+
 	}
 
 
@@ -2376,7 +2432,7 @@ namespace AleProjects.Spherical
 		public static T RandomVector<T>()
 			where T : ICartesian, new()
 		{
-			Random rnd = new Random();
+			System.Random rnd = new System.Random();
 
 			double x = 1.0 - rnd.NextDouble();
 			double y = 1.0 - rnd.NextDouble();

@@ -227,8 +227,6 @@ namespace AleProjects.Spherical.Grid
 		public static void QuadKeyParts(long quadKey, int[] keys)
 #endif
 		{
-			//= new int[ABSOLUTE_MAX_LEVEL + 1];
-
 			for (int i = ABSOLUTE_MAX_LEVEL; i > 0; i--)
 			{
 				keys[i] = (int)(quadKey & 3);
@@ -236,6 +234,26 @@ namespace AleProjects.Spherical.Grid
 			}
 
 			keys[0] = (int)(quadKey & 7);
+		}
+
+		/// <summary>
+		/// Decomposes QuadKey to triangle character indexes at each grid level. 
+		/// </summary>
+		/// <param name="quadKey">Quadkey to decompose.</param>
+		/// <returns>Decomposed quadkey.</returns>
+		public static string QuadKeyParts(long quadKey)
+		{
+			Span<char> chars = stackalloc char[31];
+
+			for (int i = ABSOLUTE_MAX_LEVEL; i > 0; i--)
+			{
+				chars[i] = (char)(0x30 + (quadKey & 3));
+				quadKey >>= 2;
+			}
+
+			chars[0] = (char)(0x30 + (quadKey & 7));
+
+			return new string(chars);
 		}
 
 		/// <summary>
@@ -854,24 +872,31 @@ namespace AleProjects.Spherical.Grid
 		}
 
 		/// <summary>
-		/// Returns a list of tiles covering (fully or partially) a circle with given center and radius represented as an angle. 
+		/// Fills given list with tiles covering (fully or partially) a circle with given center and radius represented as an angle. 
 		/// </summary>
 		/// <typeparam name="T">Type T must implement the ICartesian interface.</typeparam>
 		/// <param name="center">Center of circle.</param>
 		/// <param name="angle">Angle representing circle radius.</param>
 		/// <param name="level">Maximum grid level of the tiles.</param>
 		/// <param name="join">Join tiles if possible.</param>
-		/// <returns>List of tiles covering circle.</returns>
-		public static List<SphereGridTile> CoverCircleByTiles<T>(T center, double angle, int level, bool join)
+		/// <param name="result">List of tiles.</param>
+		public static void CoverCircleByTiles<T>(T center, double angle, int level, bool join, List<SphereGridTile> result)
 			where T : ICartesian
 		{
+			if (result == null)
+				throw new ArgumentNullException(nameof(result));
+
 			if (level < 0 || level > SphereGridHelper.ABSOLUTE_MAX_LEVEL)
 				throw new ArgumentOutOfRangeException(nameof(level));
 
+			if (result.Count != 0)
+				result.Clear();
+
 			SphereGridTile tile = new SphereGridTile(center, 0);
 			SphereGridTile t;
-			List<SphereGridTile> result = new List<SphereGridTile>() { tile };
 			int k = tile.LevelKey;
+
+			result.Add(tile);
 
 			if (!tile.EnclosesCircle(center, angle))
 				for (int i = 0; i < SphereGridHelper.PrimaryTiles.Length; i++)
@@ -900,28 +925,52 @@ namespace AleProjects.Spherical.Grid
 
 			if (join && level > 0 && result.Count > 1)
 				JoinTiles(result, level);
+		}
+
+		/// <summary>
+		/// Returns a list of tiles covering (fully or partially) a circle with given center and radius represented as an angle. 
+		/// </summary>
+		/// <typeparam name="T">Type T must implement the ICartesian interface.</typeparam>
+		/// <param name="center">Center of circle.</param>
+		/// <param name="angle">Angle representing circle radius.</param>
+		/// <param name="level">Maximum grid level of the tiles.</param>
+		/// <param name="join">Join tiles if possible.</param>
+		/// <returns>List of tiles covering circle.</returns>
+		public static List<SphereGridTile> CoverCircleByTiles<T>(T center, double angle, int level, bool join)
+			where T : ICartesian
+		{
+			var result = new List<SphereGridTile>();
+
+			CoverCircleByTiles(center, angle, level, join, result);
 
 			return result;
 		}
 
 		/// <summary>
-		/// Returns a list of tiles covering (fully or partially) a polyline. 
+		/// Fills given list of tiles covering (fully or partially) a polyline. 
 		/// </summary>
 		/// <typeparam name="T">Type T must implement the ICartesian interface.</typeparam>
 		/// <param name="polyline">Vertices of the polyline.</param>
 		/// <param name="level">Maximum grid level of tiles.</param>
 		/// <param name="join">Join tiles if possible.</param>
-		/// <returns>List of tiles covering the polyline.</returns>
-		public static List<SphereGridTile> CoverPolylineByTiles<T>(IEnumerable<T> polyline, int level, double tolerance, bool join)
+		/// <param name="result">List of tiles.</param>
+		public static void CoverPolylineByTiles<T>(IEnumerable<T> polyline, int level, double tolerance, bool join, List<SphereGridTile> result)
 			where T : ICartesian
 		{
+			if (result == null)
+				throw new ArgumentNullException(nameof(result));
+
 			if (level < 0 || level > SphereGridHelper.ABSOLUTE_MAX_LEVEL)
 				throw new ArgumentOutOfRangeException(nameof(level));
 
+			if (result.Count != 0)
+				result.Clear();
+
 			SphereGridTile tile = new SphereGridTile(polyline.First(), 0);
 			SphereGridTile t;
-			List<SphereGridTile> result = new List<SphereGridTile>() { tile };
 			int k = tile.LevelKey;
+
+			result.Add(tile);
 
 			for (int i = 0; i < SphereGridHelper.PrimaryTiles.Length; i++)
 				if (i != k && (t = new SphereGridTile(SphereGridHelper.QuadKeyForPrimaryTile(i), 0)).CoveredByPolyline(polyline, tolerance))
@@ -949,28 +998,51 @@ namespace AleProjects.Spherical.Grid
 
 			if (join && level > 0 && result.Count > 1)
 				JoinTiles(result, level);
+		}
+
+		/// <summary>
+		/// Returns a list of tiles covering (fully or partially) a polyline. 
+		/// </summary>
+		/// <typeparam name="T">Type T must implement the ICartesian interface.</typeparam>
+		/// <param name="polyline">Vertices of the polyline.</param>
+		/// <param name="level">Maximum grid level of tiles.</param>
+		/// <param name="join">Join tiles if possible.</param>
+		/// <returns>List of tiles covering the polyline.</returns>
+		public static List<SphereGridTile> CoverPolylineByTiles<T>(IEnumerable<T> polyline, int level, double tolerance, bool join)
+			where T : ICartesian
+		{
+			var result = new List<SphereGridTile>();
+
+			CoverPolylineByTiles(polyline, level, tolerance, join, result);
 
 			return result;
 		}
 
 		/// <summary>
-		/// Returns a list of tiles covering (fully or partially) a polygon. 
+		/// Fills list of tiles covering (fully or partially) a polygon. 
 		/// </summary>
 		/// <typeparam name="T">Type T must implement the ICartesian interface.</typeparam>
 		/// <param name="polygon">Vertices of the polygon.</param>
 		/// <param name="level">Maximum grid level of tiles.</param>
 		/// <param name="join">Join tiles if possible.</param>
-		/// <returns>List of tiles covering the polygon.</returns>
-		public static List<SphereGridTile> CoverPolygonByTiles<T>(IEnumerable<T> polygon, int level, bool join)
+		/// <param name="result">List of tiles.</param>
+		public static void CoverPolygonByTiles<T>(IEnumerable<T> polygon, int level, bool join, List<SphereGridTile> result)
 			where T : ICartesian
 		{
+			if (result == null)
+				throw new ArgumentNullException(nameof(result));
+
 			if (level < 0 || level > SphereGridHelper.ABSOLUTE_MAX_LEVEL)
 				throw new ArgumentOutOfRangeException(nameof(level));
 
+			if (result.Count != 0)
+				result.Clear();
+
 			SphereGridTile tile = new SphereGridTile(polygon.First(), 0);
 			SphereGridTile t;
-			List<SphereGridTile> result = new List<SphereGridTile>() { tile };
 			int k = tile.LevelKey;
+
+			result.Add(tile);
 
 			if (!tile.EnclosesPolygon(polygon))
 				for (int i = 0; i < SphereGridHelper.PrimaryTiles.Length; i++)
@@ -999,6 +1071,22 @@ namespace AleProjects.Spherical.Grid
 
 			if (join && level > 0 && result.Count > 1)
 				JoinTiles(result, level);
+		}
+
+		/// <summary>
+		/// Returns a list of tiles covering (fully or partially) a polygon. 
+		/// </summary>
+		/// <typeparam name="T">Type T must implement the ICartesian interface.</typeparam>
+		/// <param name="polygon">Vertices of the polygon.</param>
+		/// <param name="level">Maximum grid level of tiles.</param>
+		/// <param name="join">Join tiles if possible.</param>
+		/// <returns>List of tiles covering the polygon.</returns>
+		public static List<SphereGridTile> CoverPolygonByTiles<T>(IEnumerable<T> polygon, int level, bool join)
+			where T : ICartesian
+		{
+			var result = new List<SphereGridTile>();
+
+			CoverPolygonByTiles(polygon, level, join, result);
 
 			return result;
 		}
