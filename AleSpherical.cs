@@ -100,7 +100,7 @@ namespace AleProjects.Spherical
 		/// </summary>
 		public double Dec
 		{
-			get => Math.Asin(Z / Length);
+			get => Math.Asin(Z / Math.Sqrt(X * X + Y * Y + Z * Z));
 		}
 
 		/// <summary>
@@ -550,7 +550,6 @@ namespace AleProjects.Spherical
 		private const string Error_Message_Not_Polyline = "Parameter is not a polyline.";
 		private const string Error_Message_Empty_Collection = "Collection can't be empty.";
 
-
 		// properties
 
 		/// <summary>
@@ -773,7 +772,7 @@ namespace AleProjects.Spherical
 		}
 
 		/// <summary>
-		/// Extension method calculating latitude if the vector represents geopoint. Equal to the Declination<T> method.
+		/// Extension method calculating latitude if the vector represents geopoint. Equal to the Declination&lt;T&gt; method.
 		/// </summary>
 		/// <typeparam name="T">Type T must implement the ICartesian interface.</typeparam>
 		/// <param name="cartesian">Vector.</param>
@@ -785,7 +784,7 @@ namespace AleProjects.Spherical
 		}
 
 		/// <summary>
-		/// Extension method calculating longitude if the vector represents geopoint. Equal to the RightAscension<T> method.
+		/// Extension method calculating longitude if the vector represents geopoint. Equal to the RightAscension&lt;T&gt; method.
 		/// </summary>
 		/// <typeparam name="T">Type T must implement the ICartesian interface.</typeparam>
 		/// <param name="cartesian">Vector.</param>
@@ -797,11 +796,11 @@ namespace AleProjects.Spherical
 		}
 
 		/// <summary>
-		/// Extension method calculating rounded latitude if the vector represents geopoint. Equal to the Declination<T> method.
+		/// Extension method calculating rounded latitude if the vector represents geopoint. Equal to the Declination&lt;T&gt; method.
 		/// </summary>
 		/// <typeparam name="T">Type T must implement the ICartesian interface.</typeparam>
 		/// <param name="cartesian">Vector.</param>
-		/// <param name="cartesian">Number of fractional digits.</param>
+		/// <param name="digits">Number of fractional digits.</param>
 		/// <returns>Declination in degrees.</returns>
 		public static double Latitude<T>(this T cartesian, int digits)
 			where T : ICartesian
@@ -810,7 +809,7 @@ namespace AleProjects.Spherical
 		}
 
 		/// <summary>
-		/// Extension method calculating rounded longitude if the vector represents geopoint. Equal to the RightAscension<T> method.
+		/// Extension method calculating rounded longitude if the vector represents geopoint. Equal to the RightAscension&lt;T&gt; method.
 		/// </summary>
 		/// <typeparam name="T">Type T must implement the ICartesian interface.</typeparam>
 		/// <param name="cartesian">Vector.</param>
@@ -1076,7 +1075,7 @@ namespace AleProjects.Spherical
 		/// <typeparam name="T">Type T must implement the ICartesian interface and have default constructor.</typeparam>
 		/// <typeparam name="U">Type U must implement the ICartesian interface.</typeparam>
 		/// <param name="cartesian">Vector that represents location on a sphere.</param>
-		/// <param name="azimuthOnSphere">Azimuth on a sphere.</param>
+		/// <param name="bearing">Bearing on a sphere.</param>
 		/// <returns></returns>
 		public static T BearingPlane<T, U>(this U cartesian, double bearing)
 			where T : ICartesian, new()
@@ -1240,8 +1239,8 @@ namespace AleProjects.Spherical
 		/// <typeparam name="U">Type U must implement the ICartesian interface.</typeparam>
 		/// <param name="polygon">Polygon to inflate.</param>
 		/// <param name="angles">Angles of rotation in radians. Negative value deflates the polygon.</param>
-		/// <returns>Inflated polygon</returns>
-		public static List<T> InflateConvex<T, U>(IEnumerable<U> polygon, IReadOnlyList<double> angles)
+		/// <param name="result">Inflated polygon.</param>
+		public static void InflateConvex<T, U>(IEnumerable<U> polygon, IReadOnlyList<double> angles, List<T> result)
 			where T : ICartesian, new()
 			where U : ICartesian
 		{
@@ -1308,7 +1307,9 @@ namespace AleProjects.Spherical
 				previous = next;
 			}
 
-			List<T> result = new List<T>(n);
+			if (result.Count != 0)
+				result.Clear();
+
 			T res;
 
 			for (i = 0; i < n - 1; i++)
@@ -1327,6 +1328,23 @@ namespace AleProjects.Spherical
 				res.SetCartesian(-res.X, -res.Y, -res.Z);
 
 			result.Add(res);
+		}
+
+		/// <summary>
+		/// Inflates a convex polygon by rotating its planes by given angles.
+		/// </summary>
+		/// <typeparam name="T">Type T must implement the ICartesian interface and have default constructor.</typeparam>
+		/// <typeparam name="U">Type U must implement the ICartesian interface.</typeparam>
+		/// <param name="polygon">Polygon to inflate.</param>
+		/// <param name="angles">Angles of rotation in radians. Negative value deflates the polygon.</param>
+		/// <returns>Inflated polygon</returns>
+		public static List<T> InflateConvex<T, U>(IEnumerable<U> polygon, IReadOnlyList<double> angles)
+			where T : ICartesian, new()
+			where U : ICartesian
+		{
+			var result = new List<T>();
+
+			InflateConvex(polygon, angles, result);
 
 			return result;
 		}
@@ -1664,7 +1682,7 @@ namespace AleProjects.Spherical
 		/// <param name="bearing">Bearing from the initial location in radians.</param>
 		/// <param name="sphereRadius">Radius of the sphere. Default value is the radius of the Earth.</param>
 		/// <returns>Location standing at given distance and bearing.</returns>
-		public static T PointFrom<T, U>(U location, double distance, double bearing, double sphereRadius = EARTH_MEAN_RADIUS)
+		public static T PointFrom<T, U>(this U location, double distance, double bearing, double sphereRadius = EARTH_MEAN_RADIUS)
 			where T : ICartesian, new()
 			where U : IGeoCoordinate
 		{
@@ -2063,9 +2081,9 @@ namespace AleProjects.Spherical
 		/// <typeparam name="U">Type U must implement the ICartesian interface.</typeparam>
 		/// <param name="cartesian"></param>
 		/// <param name="route"></param>
-		/// <param name="moveAzimuth"></param>
+		/// <param name="moveABearing"></param>
 		/// <param name="tolerance"></param>
-		/// <param name="azimuthTolerance"></param>
+		/// <param name="bearingTolerance"></param>
 		/// <param name="userTest"></param>
 		/// <param name="angleFromRoute"></param>
 		/// <returns></returns>
@@ -2148,9 +2166,9 @@ namespace AleProjects.Spherical
 		/// <typeparam name="U">Type U must implement the ICartesian interface.</typeparam>
 		/// <param name="cartesian"></param>
 		/// <param name="route"></param>
-		/// <param name="moveAzimuth"></param>
+		/// <param name="moveBearing"></param>
 		/// <param name="tolerance"></param>
-		/// <param name="azimuthTolerance"></param>
+		/// <param name="bearingTolerance"></param>
 		/// <param name="userTest"></param>
 		/// <param name="result"></param>
 		/// <returns></returns>
@@ -2361,6 +2379,7 @@ namespace AleProjects.Spherical
 		/// Extension method checking if a location is inside an area with given South-West and North-East corners.
 		/// </summary>
 		/// <typeparam name="T">Type T must implement the ICartesian interface.</typeparam>
+		/// <typeparam name="U">Type T must implement the ICartesian interface.</typeparam>
 		/// <param name="location">Location to test.</param>
 		/// <param name="SW">Area South-West corner.</param>
 		/// <param name="NE">Area North-East corner.</param>
@@ -2561,7 +2580,7 @@ namespace AleProjects.Spherical
 		/// Extension method returning a difference of two bearings.
 		/// </summary>
 		/// <param name="bearing">First bearing in radians or degrees depending on the degrees argument.</param>
-		/// <param name="otherHeading">Second bearing in radians or degrees depending on the degrees argument.</param>
+		/// <param name="otherBearing">Second bearing in radians or degrees depending on the degrees argument.</param>
 		/// <param name="degrees">Bearings in degrees when true.</param>
 		/// <returns>Difference of two bearings.</returns>
 		public static double BearingsDiff(this double bearing, double otherBearing, bool degrees = false)
@@ -2590,7 +2609,7 @@ namespace AleProjects.Spherical
 		/// Extension method returning a difference of two bearings.
 		/// </summary>
 		/// <param name="bearing">First bearing in radians or degrees depending on the degrees argument.</param>
-		/// <param name="otherHeading">Second bearing in radians or degrees depending on the degrees argument.</param>
+		/// <param name="otherBearing">Second bearing in radians or degrees depending on the degrees argument.</param>
 		/// <param name="degrees">Bearings in degrees when true.</param>
 		/// <returns>Difference of two bearings.</returns>
 		public static float BearingsDiff(this float bearing, float otherBearing, bool degrees = false)
@@ -2616,9 +2635,9 @@ namespace AleProjects.Spherical
 		}
 
 		/// <summary>
-		/// Extension method testing if a heading is within given range. The range can't be more than π. The end of the range can be larger than the start. 
+		/// Extension method testing if a bearing is within given range. The range can't be more than π. The end of the range can be larger than the start. 
 		/// </summary>
-		/// <param name="heading">Heading to test.</param>
+		/// <param name="bearing">Bearing to test.</param>
 		/// <param name="h1">Start value of the range.</param>
 		/// <param name="h2">End value of the range.</param>
 		/// <returns>True if within the range.</returns>
