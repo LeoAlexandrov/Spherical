@@ -372,14 +372,25 @@ namespace AleProjects.Spherical
 				throw new ArgumentException("Invalid text format for LatLonValue.", nameof(text));
 
 			var fmt = new System.Globalization.NumberFormatInfo();
+			double latitude, longitude;
 
-			if (!double.TryParse(text.AsSpan(0, commaIndex), fmt, out double latitude) ||
+#if NETCOREAPP2_1_OR_GREATER
+			if (!double.TryParse(text.AsSpan(0, commaIndex), fmt, out latitude) ||
 				latitude > 90.0 || latitude < -90.0)
 				throw new ArgumentException("Invalid latitude value in text.", nameof(text));
 
-			if (!double.TryParse(text.AsSpan(commaIndex + 1), fmt, out double longitude) ||
+			if (!double.TryParse(text.AsSpan(commaIndex + 1), fmt, out longitude) ||
 				longitude > 180.0 || longitude < -180.0)
 				throw new ArgumentException("Invalid longitude value in text.", nameof(text));
+#else
+			if (!double.TryParse(text.Substring(0, commaIndex), System.Globalization.NumberStyles.Float, fmt, out latitude) ||
+				latitude > 90.0 || latitude < -90.0)
+				throw new ArgumentException("Invalid latitude value in text.", nameof(text));
+
+			if (!double.TryParse(text.Substring(commaIndex + 1), System.Globalization.NumberStyles.Float, fmt, out longitude) ||
+				longitude > 180.0 || longitude < -180.0)
+				throw new ArgumentException("Invalid longitude value in text.", nameof(text));
+#endif
 
 			Latitude = latitude;
 			Longitude = longitude;
@@ -398,12 +409,25 @@ namespace AleProjects.Spherical
 				return false;
 
 			var fmt = new System.Globalization.NumberFormatInfo();
+			double latitude, longitude;
 
-			if (!double.TryParse(text.AsSpan(0, commaIndex), fmt, out double latitude) || latitude > 90.0 || latitude < -90.0)
-				return false;
+#if NETCOREAPP2_1_OR_GREATER
+			if (!double.TryParse(text.AsSpan(0, commaIndex), fmt, out latitude) ||
+				latitude > 90.0 || latitude < -90.0)
+				throw new ArgumentException("Invalid latitude value in text.", nameof(text));
 
-			if (!double.TryParse(text.AsSpan(commaIndex + 1), fmt, out double longitude) || longitude > 180.0 || longitude < -180.0)
-				return false;
+			if (!double.TryParse(text.AsSpan(commaIndex + 1), fmt, out longitude) ||
+				longitude > 180.0 || longitude < -180.0)
+				throw new ArgumentException("Invalid longitude value in text.", nameof(text));
+#else
+			if (!double.TryParse(text.Substring(0, commaIndex), System.Globalization.NumberStyles.Float, fmt, out latitude) ||
+				latitude > 90.0 || latitude < -90.0)
+				throw new ArgumentException("Invalid latitude value in text.", nameof(text));
+
+			if (!double.TryParse(text.Substring(commaIndex + 1), System.Globalization.NumberStyles.Float, fmt, out longitude) ||
+				longitude > 180.0 || longitude < -180.0)
+				throw new ArgumentException("Invalid longitude value in text.", nameof(text));
+#endif
 
 			val.Latitude = latitude;
 			val.Longitude = longitude;
@@ -1137,28 +1161,29 @@ namespace AleProjects.Spherical
 			where T : ICartesian
 			where U : ICartesian
 		{
-			if (polygon.Count() < 3)
+			int n = polygon.Count();
+
+			if (n < 3)
 				throw new ArgumentException(Error_Message_Not_Polygon, nameof(polygon));
 
-			U first = polygon.First();
-			U previous = polygon.Last();
-			U current = first;
+			U basic = polygon.Last();
+			U current = polygon.First();
 
 			foreach (U next in polygon.Skip(1))
 			{
-				if (_InsideTriangle(cartesian.X, cartesian.Y, cartesian.Z,
-						previous.X, previous.Y, previous.Z,
-						current.X, current.Y, current.Z,
-						next.X, next.Y, next.Z)) return true;
+				if (--n < 2)
+					break;
 
-				previous = current;
+				if (_InsideTriangle(cartesian.X, cartesian.Y, cartesian.Z,
+						basic.X, basic.Y, basic.Z,
+						current.X, current.Y, current.Z,
+						next.X, next.Y, next.Z)) 
+					return true;
+
 				current = next;
 			}
 
-			return _InsideTriangle(cartesian.X, cartesian.Y, cartesian.Z,
-				previous.X, previous.Y, previous.Z,
-				current.X, current.Y, current.Z,
-				first.X, first.Y, first.Z);
+			return false;
 		}
 
 		/// <summary>

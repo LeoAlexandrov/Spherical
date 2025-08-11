@@ -243,7 +243,11 @@ namespace AleProjects.Spherical.Grid
 		/// <returns>Decomposed quadkey.</returns>
 		public static string QuadKeyParts(long quadKey)
 		{
+#if NETCOREAPP2_1_OR_GREATER
 			Span<char> chars = stackalloc char[31];
+#else
+			char[] chars = new char[31];
+#endif
 
 			for (int i = ABSOLUTE_MAX_LEVEL; i > 0; i--)
 			{
@@ -260,7 +264,7 @@ namespace AleProjects.Spherical.Grid
 		/// Returns grid level where square of a tile relates to square of a circle in given ratio (approximately).  
 		/// </summary>
 		/// <param name="angle">Represents the circle radius.</param>
-		/// <param name="triangleToCircleRatio">Tile to circle ratio.</param>
+		/// <param name="circleToTriangleRatio">Tile to circle ratio.</param>
 		/// <returns>Grid level.</returns>
 		public static int LevelForCircleToTriangleRatio(double angle, double circleToTriangleRatio)
 		{
