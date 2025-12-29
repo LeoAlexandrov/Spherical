@@ -1375,6 +1375,102 @@ namespace AleProjects.Spherical
 		}
 
 		/// <summary>
+		/// This method calculates a convex hull of a set of points on a sphere using 3D gift wrapping (Jarvis march).
+		/// </summary>
+		/// <typeparam name="T">Type T must implement the ICartesian interface.</typeparam>
+		/// <param name="points">Set of points on a sphere.</param>
+		/// <param name="result">Indices of those points in the set that form a convex hull.</param>
+		/// <returns>The result parameter of the method</returns>
+		/// <exception cref="ArgumentNullException">Thrown when the set is null.</exception>
+		public static List<int> ConvexHull<T>(IReadOnlyList<T> points, List<int> result)
+			where T : ICartesian
+		{
+			if (points == null)
+				throw new ArgumentNullException(nameof(points));
+
+			if (result == null)
+				result = new List<int>();
+			else if (result.Count != 0)
+				result.Clear();
+
+			int n = points.Count;
+
+			if (n < 4)
+			{
+				result.AddRange(Enumerable.Range(0, n));
+				return result;
+			}
+
+			CartesianValue _Sub(in T A, in T B)
+			{
+				return new CartesianValue(A.X - B.X, A.Y - B.Y, A.Z - B.Z);
+			}
+
+			// Find the starting point - the farthest from the first point
+
+			int farthestIdx = -1;
+			double minCos = double.MaxValue;
+
+			for (int i = 1; i < n; i++)
+			{
+				double cos = points[0].Cosine(points[i]);
+
+				if (cos < minCos)
+				{
+					minCos = cos;
+					farthestIdx = i;
+				}
+			}
+
+			int start = farthestIdx;
+			int current = start;
+
+			// Gift wrapping algorithm: for each point on the hull, find the next point
+
+			do
+			{
+				result.Add(current);
+
+				int next = 0;
+
+				// Find the point that makes the smallest left turn (counter-clockwise)
+
+				for (int i = 0; i < n; i++)
+				{
+					if (i == current)
+						continue;
+
+					if (next == current)
+					{
+						next = i;
+						continue;
+					}
+
+					// Use triple product to determine if point i is to the left of the line from current to next
+
+					double tp = points[current].TripleProduct(points[next], points[i]);
+
+					// If i is to the left of current->next, update next
+
+					if (tp < 0.0 ||
+						(Math.Abs(tp) < EPSILON &&
+						 VectorLength(_Sub(points[i], points[current])) > VectorLength(_Sub(points[next], points[current]))))
+					{
+						next = i;
+					}
+				}
+
+				current = next;
+
+			} while (current != start && result.Count < n);
+
+			result.Sort();
+
+			return result;
+		}
+
+
+		/// <summary>
 		/// Extension method calculating a cosine of an angle between two vectors.
 		/// </summary>
 		/// <typeparam name="T">Type T must implement the ICartesian interface.</typeparam>
