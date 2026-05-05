@@ -177,7 +177,8 @@ namespace AleProjects.Spherical.Grid
 		/// <summary>
 		/// Calculates QuadKey of a tile at specified grid level containing a location with given latitude and longitude.
 		/// </summary>
-		/// <param name="location">Location on sphere.</param>
+		/// <param name="latitude">Latitude of the location in degrees.</param>
+		/// <param name="longitude">Longitude of the location in degrees.</param>
 		/// <param name="level">Grid level.</param>
 		/// <returns>QuadKey which uniquely identifies tile containing given location.</returns>
 		public static long BuildQuadKey(double latitude, double longitude, int level)

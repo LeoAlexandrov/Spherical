@@ -371,23 +371,22 @@ namespace AleProjects.Spherical
 			if (commaIndex <= 0 || commaIndex == text.Length - 1)
 				throw new ArgumentException("Invalid text format for LatLonValue.", nameof(text));
 
-			var fmt = new System.Globalization.NumberFormatInfo();
-			double latitude, longitude;
+			var fmt = System.Globalization.CultureInfo.InvariantCulture.NumberFormat;
 
 #if NETCOREAPP2_1_OR_GREATER
-			if (!double.TryParse(text.AsSpan(0, commaIndex), fmt, out latitude) ||
+			if (!double.TryParse(text.AsSpan(0, commaIndex), fmt, out double latitude) ||
 				latitude > 90.0 || latitude < -90.0)
 				throw new ArgumentException("Invalid latitude value in text.", nameof(text));
 
-			if (!double.TryParse(text.AsSpan(commaIndex + 1), fmt, out longitude) ||
+			if (!double.TryParse(text.AsSpan(commaIndex + 1), fmt, out double longitude) ||
 				longitude > 180.0 || longitude < -180.0)
 				throw new ArgumentException("Invalid longitude value in text.", nameof(text));
 #else
-			if (!double.TryParse(text.Substring(0, commaIndex), System.Globalization.NumberStyles.Float, fmt, out latitude) ||
+			if (!double.TryParse(text.Substring(0, commaIndex), System.Globalization.NumberStyles.Float, fmt, out double latitude) ||
 				latitude > 90.0 || latitude < -90.0)
 				throw new ArgumentException("Invalid latitude value in text.", nameof(text));
 
-			if (!double.TryParse(text.Substring(commaIndex + 1), System.Globalization.NumberStyles.Float, fmt, out longitude) ||
+			if (!double.TryParse(text.Substring(commaIndex + 1), System.Globalization.NumberStyles.Float, fmt, out double longitude) ||
 				longitude > 180.0 || longitude < -180.0)
 				throw new ArgumentException("Invalid longitude value in text.", nameof(text));
 #endif
@@ -408,25 +407,20 @@ namespace AleProjects.Spherical
 			if (commaIndex <= 0 || commaIndex == text.Length - 1)
 				return false;
 
-			var fmt = new System.Globalization.NumberFormatInfo();
-			double latitude, longitude;
+			var fmt = System.Globalization.CultureInfo.InvariantCulture.NumberFormat;
 
 #if NETCOREAPP2_1_OR_GREATER
-			if (!double.TryParse(text.AsSpan(0, commaIndex), fmt, out latitude) ||
-				latitude > 90.0 || latitude < -90.0)
-				throw new ArgumentException("Invalid latitude value in text.", nameof(text));
+			if (!double.TryParse(text.AsSpan(0, commaIndex), System.Globalization.NumberStyles.Float, fmt, out double latitude) || latitude > 90.0 || latitude < -90.0)
+				return false;
 
-			if (!double.TryParse(text.AsSpan(commaIndex + 1), fmt, out longitude) ||
-				longitude > 180.0 || longitude < -180.0)
-				throw new ArgumentException("Invalid longitude value in text.", nameof(text));
+			if (!double.TryParse(text.AsSpan(commaIndex + 1), System.Globalization.NumberStyles.Float,fmt, out double longitude) || longitude > 180.0 || longitude < -180.0)
+				return false;
 #else
-			if (!double.TryParse(text.Substring(0, commaIndex), System.Globalization.NumberStyles.Float, fmt, out latitude) ||
-				latitude > 90.0 || latitude < -90.0)
-				throw new ArgumentException("Invalid latitude value in text.", nameof(text));
+			if (!double.TryParse(text.Substring(0, commaIndex), System.Globalization.NumberStyles.Float, fmt, out double latitude) || latitude > 90.0 || latitude < -90.0)
+				return false;
 
-			if (!double.TryParse(text.Substring(commaIndex + 1), System.Globalization.NumberStyles.Float, fmt, out longitude) ||
-				longitude > 180.0 || longitude < -180.0)
-				throw new ArgumentException("Invalid longitude value in text.", nameof(text));
+			if (!double.TryParse(text.Substring(commaIndex + 1), System.Globalization.NumberStyles.Float, fmt, out double longitude) || longitude > 180.0 || longitude < -180.0)
+				return false;
 #endif
 
 			val.Latitude = latitude;
@@ -1401,7 +1395,7 @@ namespace AleProjects.Spherical
 				return result;
 			}
 
-			CartesianValue _Sub(in T A, in T B)
+			static CartesianValue _Sub(in T A, in T B)
 			{
 				return new CartesianValue(A.X - B.X, A.Y - B.Y, A.Z - B.Z);
 			}
