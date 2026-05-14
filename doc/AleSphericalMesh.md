@@ -15,7 +15,7 @@ The `Mesh` static helper class provides a coordinate system, topmost triangular 
 
 The `MeshCell` class represents a triangular cell and allows to cover regions like circles, polygons, and polylines by cells.
 
-```
+```csharp
 public struct MeshCell : IComparable<MeshCell>, IEquatable<MeshCell>
 {
 	public long Key { get; private set; }
@@ -261,7 +261,7 @@ bool joinCells = false;
 var cells = Mesh.CoverPolyline(route, level, tolerance, joinCells);
 var keys = cells.Select(c => c.Key.ToString());
 
-string sql = $"SELECT DISTINCT w.* FROM Ways as w INNER JOIN WaysCells as wc ON w.Id=wc.WayId WHERE wc.Key IN ({string.Join(',', keys)};";
+string sql = $"SELECT DISTINCT w.* FROM Ways as w INNER JOIN WaysCells as wc ON w.Id=wc.WayId WHERE wc.Key IN ({string.Join(',', keys)});";
 
 var ways = await conn.QueryAsync<Way>(sql);
 ```
