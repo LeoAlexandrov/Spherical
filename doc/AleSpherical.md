@@ -54,7 +54,7 @@ public static List<T> InflateConvex<T, U>(IEnumerable<U> polygon, IReadOnlyList<
 ```
 The idea behind calculations is to rotate planes formed by vertices vectors to an angle which is a distance on a sphere divided by sphere radius. **InflateConvex** rotates normal vectors N1 = V1 x V2, N2 = V2 x V3, etc. that represent planes. Next step is to find new vertices of the inflated convex. They are cross products of the rotated normal vectors N1 x N2, etc.
 
-![Inflate convex polygon](https://aleprojects.com/upload/images/inflate-convex.jpg)
+![Inflate convex polygon](https://media.aleprojects.com/github/inflate-convex.jpg)
 
 **angles** parameter must contain at least 1 element. **InflateConvex** takes the next value in **angles** for the next plane and uses the last value for the rest planes if the length of **angles** is less than the number of the convex vertices. 
 
@@ -93,7 +93,7 @@ public static double TestSection<T, U>(this T cartesian, U V1, U V2)
 
 This method checks if a vector **cartesian** is between two vectors **V1** and **V2**. First, it builds a plane using **V1** and **V2**. Then it takes an angle between the vector **cartesian** and this plane and corrects it with π/2 angle. The method returns this angle, its positive value indicates that **cartesian** is between the vectors, negative if not. The next step is to build another plane containing **cartesian** and perpendicular to the plane obtained in the first step. Finally, it checks positions of **V1** and **V2** relative to this plane. If they are on the opposite sides, the result is positive.
 
-![Test section](https://aleprojects.com/upload/images/test_section.jpg)
+![Test section](https://media.aleprojects.com/github/test_section.jpg)
 
 This drawing demonstrates **TestSection** method. If to call C.TestSection(V1,V2) with C,V1,V2 as they drawn, it will return positive alpha angle indicating success. Alpha\*sphere_radius is a distance from the point C to the arc on the sphere. If C is out of the arc V1V2, method will return negative value of the angle.
 
@@ -106,7 +106,7 @@ This method works in a similar way as **TestSection**. It applies **TestSection*
 
 Example:
 
-![Test polyline](https://aleprojects.com/upload/images/test_polyline_1.png) 
+![Test polyline](https://media.aleprojects.com/github/test_polyline_1.png) 
 ```
 List<Cartesian> polyline = SphericalExtension.DecodeGooglePolyline<Cartesian>("mk~F`c~uOOuCCqCEiCSkD_@gC");
 
@@ -136,7 +136,7 @@ PolylineTestResult testResult = location.TestPolyline(
 
 In most cases the **geometryTest** delegate is called with v0 = null and v1, v2 corresponding to the section of the polyline most closest to the point. This is the case of point C on the drawing below. In this case it is enough to compare current heading with the azimuth from v1 to v2. The **azumuth** parameter of the delegate holds this azimuth. **HeadingsDiff** is the extension method of the SphericalExtesion static class. The **angle** parameter if multiplied by SphericalExtension.EARTH_MEAN_RADIUS represents a distance to the section.
 
-![Test polyline](https://aleprojects.com/upload/images/test_polyline2.jpg)
+![Test polyline](https://media.aleprojects.com/github/test_polyline2.jpg)
 
 Sometimes it is possible that the point is close enough to some vertex of polyline, but failed the **TestSection** for both sections. Point C' on the drawing demonstrates this situation. When such a thing happens, v0 parameter is not null. In this case we need to make additional test for the heading. First, we compare the heading with the azimuth of v0,v1 (points marked 0, 1 on the drawing). If this test fails, we check if the heading is within range of the azimuths of neighbour sections. **BearingInRange** is the standard extension method. 
 

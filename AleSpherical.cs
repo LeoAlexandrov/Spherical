@@ -9,9 +9,7 @@
  *      
  *      Headings are always in radians.
  *      
- *      
- * Install System.ValueTuple package via Nuget
- * 
+ * Install System.ValueTuple package via Nuget for projects with .Net Framework older than 4.7
  * PM> Install-Package "System.ValueTuple"
  */
 
@@ -229,7 +227,7 @@ namespace AleProjects.Spherical
 		/// <returns></returns>
 		public override string ToString()
 		{
-			return string.Format("({0}; {1}; {2})", X, Y, Z);
+			return $"({X}; {Y}; {Z})";
 		}
 	}
 
@@ -327,9 +325,13 @@ namespace AleProjects.Spherical
 			Z = z;
 		}
 
+#if NETCOREAPP2_1_OR_GREATER || NETSTANDARD2_1_OR_GREATER
+		public override readonly string ToString()
+#else
 		public override string ToString()
+#endif
 		{
-			return string.Format("({0}; {1}; {2})", X, Y, Z);
+			return $"({X}; {Y}; {Z})";
 		}
 	}
 
@@ -373,7 +375,7 @@ namespace AleProjects.Spherical
 
 			var fmt = System.Globalization.CultureInfo.InvariantCulture.NumberFormat;
 
-#if NETCOREAPP2_1_OR_GREATER
+#if NETCOREAPP2_1_OR_GREATER || NETSTANDARD2_1_OR_GREATER
 			if (!double.TryParse(text.AsSpan(0, commaIndex), fmt, out double latitude) ||
 				latitude > 90.0 || latitude < -90.0)
 				throw new ArgumentException("Invalid latitude value in text.", nameof(text));
@@ -409,7 +411,7 @@ namespace AleProjects.Spherical
 
 			var fmt = System.Globalization.CultureInfo.InvariantCulture.NumberFormat;
 
-#if NETCOREAPP2_1_OR_GREATER
+#if NETCOREAPP2_1_OR_GREATER || NETSTANDARD2_1_OR_GREATER
 			if (!double.TryParse(text.AsSpan(0, commaIndex), System.Globalization.NumberStyles.Float, fmt, out double latitude) || latitude > 90.0 || latitude < -90.0)
 				return false;
 
@@ -754,11 +756,11 @@ namespace AleProjects.Spherical
 		}
 
 		/// <summary>
-		/// Extension method calculating raght ascension of the vector (longitude for geopoint).
+		/// Extension method calculating right ascension of the vector (longitude for geopoint).
 		/// </summary>
 		/// <typeparam name="T">Type T must implement the ICartesian interface.</typeparam>
 		/// <param name="cartesian">Vector.</param>
-		/// <returns>Raght ascension in radians.</returns>
+		/// <returns>Right ascension in radians.</returns>
 		public static double Ra<T>(this T cartesian)
 			where T : ICartesian
 		{
@@ -778,11 +780,11 @@ namespace AleProjects.Spherical
 		}
 
 		/// <summary>
-		/// Extension method calculating raght ascension of the vector (longitude for geopoint).
+		/// Extension method calculating right ascension of the vector (longitude for geopoint).
 		/// </summary>
 		/// <typeparam name="T">Type T must implement the ICartesian interface.</typeparam>
 		/// <param name="cartesian">Vector.</param>
-		/// <returns>Raght ascension in degrees.</returns>
+		/// <returns>Right ascension in degrees.</returns>
 		public static double RightAscension<T>(this T cartesian)
 			where T : ICartesian
 		{
@@ -806,7 +808,7 @@ namespace AleProjects.Spherical
 		/// </summary>
 		/// <typeparam name="T">Type T must implement the ICartesian interface.</typeparam>
 		/// <param name="cartesian">Vector.</param>
-		/// <returns>Raght ascension in degrees.</returns>
+		/// <returns>Right ascension in degrees.</returns>
 		public static double Longitude<T>(this T cartesian)
 			where T : ICartesian
 		{
@@ -832,7 +834,7 @@ namespace AleProjects.Spherical
 		/// <typeparam name="T">Type T must implement the ICartesian interface.</typeparam>
 		/// <param name="cartesian">Vector.</param>
 		/// <param name="digits">Number of fractional digits.</param>
-		/// <returns>Raght ascension in degrees.</returns>
+		/// <returns>Right ascension in degrees.</returns>
 		public static double Longitude<T>(this T cartesian, int digits)
 			where T : ICartesian
 		{
@@ -1395,11 +1397,14 @@ namespace AleProjects.Spherical
 				return result;
 			}
 
+#if NETCOREAPP2_1_OR_GREATER || NETSTANDARD2_1_OR_GREATER
 			static CartesianValue _Sub(in T A, in T B)
+#else
+			CartesianValue _Sub(in T A, in T B)
+#endif
 			{
 				return new CartesianValue(A.X - B.X, A.Y - B.Y, A.Z - B.Z);
 			}
-
 			// Find the starting point - the farthest from the first point
 
 			int farthestIdx = -1;
